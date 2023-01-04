@@ -1,0 +1,7 @@
+__pycache__/
+slice*.html
+.DS_Store
+
+# Old test files
+test_zipping.zip
+nx.html
