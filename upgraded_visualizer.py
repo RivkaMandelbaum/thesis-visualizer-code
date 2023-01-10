@@ -1,35 +1,138 @@
-import networkx as nx
+#-----------------------------------------------------------------------
+# upgraded_visualizer.py
+# Author: Rivka Mandelbaum
+#-----------------------------------------------------------------------
+
 import pandas as pd
+import networkx as nx
 from pyvis.network import Network
-import sys
+from flask import Flask, render_template, make_response
 
-def main():
-    if len(sys.argv) != 2:
-        print("usage: python3 upgraded_visualizer.py [path to CSV]")
+#-----------------------------------------------------------------------
+DEFAULT_COLOR = '#97c2fc' # from PyVis
+FAILED_COLOR = 'red'
 
-    # import data
-    csv_path = sys.argv[1]
+PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
-    # read Nodes CSV into Dataframe
-    nodes = pd.read_csv(csv_path)
+node_data_by_trial_maker = {} # TODO fix
+info_data_by_trial_maker = {} # TODO fix
 
-    # Convert to slices of Nodes by degree
-    node_data = nodes
-    node_data = node_data[nodes["type"] == "graph_chain_node"]
-    node_data = node_data[node_data["failed"] == "f"]
-    node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids"]]
+app = Flask(__name__, template_folder='./templates')
+#-----------------------------------------------------------------------
 
-    first_slice = node_data[node_data["degree"] == 1.0]
+def process_data():
+    nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
+    networks = pd.read_csv(PATH + "network.csv", low_memory=False)
+    infos = pd.read_csv(PATH + "info.csv")
 
-    # Convert slices to Networkx objects
+   # filter networks: role = experiment
+    network_data = networks
+    network_data = network_data[network_data["role"] == "experiment"]
 
+    # filter per trial maker ID
+    trial_maker_ids = network_data["trial_maker_id"].unique()
 
-    # Basic visulazation of a single slice
+    for trial_maker_id in trial_maker_ids:
+        network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
 
-    # G = nx.complete_graph(3)
-    # nt = Network('500px', '500px')
-    # nt.from_nx(G)
-    # nt.show('nx.html')
+        experiment_network_ids = list(network_data['id'].to_numpy())
 
-if __name__ == "__main__":
-    main()
+        # filter nodes; sort
+        node_data = nodes
+        node_data = node_data[nodes["type"] == "graph_chain_node"]
+        node_data = node_data[node_data["network_id"].isin(experiment_network_ids)]
+        node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids", "failed"]]
+        node_data = node_data.sort_values(["network_id", "degree"])
+
+        # filter infos like nodes, sort
+        info_data = infos
+        info_data = info_data[infos["type"] == "graph_chain_trial"]
+        info_data = info_data[["id", "creation_time", "details", "origin_id", "network_id", "participant_id", "failed"]] # TODO: Probably want more columns here
+
+        info_data = info_data.sort_values(["network_id", "origin_id"])
+
+        # add to the dictionary
+        node_data_by_trial_maker[trial_maker_id] = node_data
+        info_data_by_trial_maker[trial_maker_id] = info_data
+
+def generate_graph(degree, trial_maker_id):
+    ''' Given a degree (int or float) and a trial_maker_id in the experiment, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
+    '''
+    # validation: ensure degree is a float
+    if not isinstance(degree, float):
+        try:
+            degree = float(degree)
+        except Exception as ex:
+            raise("When converting degree to float, the following exception occured: " + str(ex))
+
+    # validation: ensure trial_maker_id is valid
+    if trial_maker_id not in node_data_by_trial_maker.keys():
+        print(node_data_by_trial_maker)
+        raise Exception("Invalid trial_maker_id.")
+
+    # use correct data for that trial_maker_id
+    node_data = node_data_by_trial_maker[trial_maker_id]
+    info_data = info_data_by_trial_maker[trial_maker_id]
+
+    # create graph
+    G = nx.DiGraph()
+
+    # add nodes from node_data to the Graph
+    # nodes are identified by their node_id
+    # nodes have named attributes vertex_id and degree
+    deg_nodes = node_data[node_data["degree"] == degree]
+    for node_id in deg_nodes["id"].values.tolist():
+        # extract vertex id
+        vert_id = deg_nodes[deg_nodes["id"] == node_id]["vertex_id"].values[0]
+
+        # add metadata from infos
+        info_row = info_data[info_data["origin_id"] == node_id]
+        try:
+            creation_time = info_row["creation_time"].values[0]
+        except:
+            creation_time = None
+
+        # color failed nodes
+        node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
+
+        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color)
+
+    # add edges to the Graph: iterate over deg_nodes, add incoming edges
+    # using dependent_vertex_ids column
+    edges = {}
+    for i, ser in deg_nodes.iterrows():
+        node_id = ser["id"]
+
+        # get dependent vertices (incoming edges) in a list
+        dependent_vertices = ser["dependent_vertex_ids"].strip('][').split(',')
+
+        # find the corresponding row of deg_nodes for each vertex_id
+        dependent_nodes = [deg_nodes[deg_nodes["vertex_id"] == float(v)] for v in dependent_vertices]
+
+        # extract the node_id from each dependent vertex row
+        dependent_nodes = [n["id"].values[0] for n in dependent_nodes]
+
+        # add as edges (dependent node --> curent node)
+        edge_list = [(int(dependent_node), int(node_id)) for dependent_node in dependent_nodes]
+        G.add_edges_from(edge_list)
+
+    return G
+
+@app.route('/')
+@app.route('/index')
+def create_visualizer():
+
+    process_data()
+
+    pyvis_net = Network(directed=True)
+    pyvis_net.from_nx(generate_graph(1.0, "graph_experiment"))
+
+    if(len(pyvis_net.nodes)) != 49:
+        print('error')
+
+    graph_html = pyvis_net.generate_html()
+
+    page_html = render_template('dashboard_visualizer.html', graph=graph_html)
+
+    response = make_response(page_html)
+    return response
