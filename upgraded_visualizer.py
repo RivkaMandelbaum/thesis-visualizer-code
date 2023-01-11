@@ -137,9 +137,17 @@ def create_visualizer():
         node['title'] = node['label']
 
     graph_html = pyvis_net.generate_html()
-    settings = ["Degree", "Trial Maker ID", "Show Infos", "Graph Seed", "PyVis Physics", "Hide Non-Neighbors"]
+    min_degree = node_data_by_trial_maker["graph_experiment"]["degree"].min()
+    max_degree = node_data_by_trial_maker["graph_experiment"]["degree"].max()
 
-    page_html = render_template('dashboard_visualizer.html', graph=graph_html, settings=settings)
+    page_html = render_template(
+        'dashboard_visualizer.html',
+        graph=graph_html,
+        trialmaker_options=node_data_by_trial_maker.keys(),
+        degree_min=min_degree,
+        degree_max=max_degree,
+        physics_options=["barnes hut", "placeholder 1"]
+        )
 
     response = make_response(page_html)
     return response
