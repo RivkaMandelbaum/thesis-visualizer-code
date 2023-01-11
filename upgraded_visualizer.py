@@ -16,6 +16,8 @@ FAILED_COLOR = 'red'
 
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
+EXP_NAME = "graph_experiment"
+
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
 node_data_by_trial_maker = {} # TODO fix
@@ -125,28 +127,36 @@ def generate_graph(degree, trial_maker_id):
 @app.route('/')
 @app.route('/index')
 def create_visualizer():
-
     # process data into dicts (global variables)
     process_data()
 
-
+    # create network
     pyvis_net = Network(directed=True)
-    pyvis_net.from_nx(generate_graph(1.0, "graph_experiment"))
+    pyvis_net.from_nx(generate_graph(1.0, EXP_NAME))
 
     for node in pyvis_net.nodes:
         node['title'] = node['label']
 
+    # generate placeholder values for the template
     graph_html = pyvis_net.generate_html()
-    min_degree = node_data_by_trial_maker["graph_experiment"]["degree"].min()
-    max_degree = node_data_by_trial_maker["graph_experiment"]["degree"].max()
 
+    node_data = node_data_by_trial_maker[EXP_NAME]
+    min_degree = node_data["degree"].min()
+    max_degree = node_data["degree"].max()
+    min_vertex_id = node_data["vertex_id"].min()
+    max_vertex_id = node_data["vertex_id"].max()
+
+
+    # render template and return response
     page_html = render_template(
         'dashboard_visualizer.html',
         graph=graph_html,
         trialmaker_options=node_data_by_trial_maker.keys(),
         degree_min=min_degree,
         degree_max=max_degree,
-        physics_options=["barnes hut", "placeholder 1"]
+        physics_options=["barnes hut", "placeholder 1"],
+        find_min=min_vertex_id,
+        find_max=max_vertex_id,
         )
 
     response = make_response(page_html)
