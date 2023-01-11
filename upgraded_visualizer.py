@@ -2,6 +2,7 @@
 # upgraded_visualizer.py
 # Author: Rivka Mandelbaum
 #-----------------------------------------------------------------------
+#--------------------------   Imports  ---------------------------------
 
 import pandas as pd
 import networkx as nx
@@ -9,17 +10,21 @@ from pyvis.network import Network
 from flask import Flask, render_template, make_response
 
 #-----------------------------------------------------------------------
+#-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
 FAILED_COLOR = 'red'
 
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
+#-----------------------------------------------------------------------
+#-------------------------  Global variables  --------------------------
 node_data_by_trial_maker = {} # TODO fix
 info_data_by_trial_maker = {} # TODO fix
 
 app = Flask(__name__, template_folder='./templates')
-#-----------------------------------------------------------------------
 
+#-----------------------------------------------------------------------
+#----------------------------  Functions  ------------------------------
 def process_data():
     nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
     networks = pd.read_csv(PATH + "network.csv", low_memory=False)
@@ -95,12 +100,11 @@ def generate_graph(degree, trial_maker_id):
         # color failed nodes
         node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
 
-        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color)
+        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=str(int(vert_id)))
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
-    edges = {}
-    for i, ser in deg_nodes.iterrows():
+    for _, ser in deg_nodes.iterrows():
         node_id = ser["id"]
 
         # get dependent vertices (incoming edges) in a list
@@ -122,13 +126,15 @@ def generate_graph(degree, trial_maker_id):
 @app.route('/index')
 def create_visualizer():
 
+    # process data into dicts (global variables)
     process_data()
+
 
     pyvis_net = Network(directed=True)
     pyvis_net.from_nx(generate_graph(1.0, "graph_experiment"))
 
-    if(len(pyvis_net.nodes)) != 49:
-        print('error')
+    for node in pyvis_net.nodes:
+        node['title'] = node['label']
 
     graph_html = pyvis_net.generate_html()
 
