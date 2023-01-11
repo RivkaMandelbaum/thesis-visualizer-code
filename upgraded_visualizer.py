@@ -16,8 +16,6 @@ FAILED_COLOR = 'red'
 
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
-EXP_NAME = "graph_experiment"
-
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
 node_data_by_trial_maker = {} # TODO fix
@@ -129,10 +127,12 @@ def generate_graph(degree, trial_maker_id):
 def create_visualizer():
     # process data into dicts (global variables)
     process_data()
+    default_exp = list(node_data_by_trial_maker.keys())[0]
+    default_degree = node_data_by_trial_maker[default_exp]["degree"].min()
 
     # create network
     pyvis_net = Network(directed=True)
-    pyvis_net.from_nx(generate_graph(1.0, EXP_NAME))
+    pyvis_net.from_nx(generate_graph(default_degree, default_exp))
 
     for node in pyvis_net.nodes:
         node['title'] = node['label']
@@ -140,7 +140,7 @@ def create_visualizer():
     # generate placeholder values for the template
     graph_html = pyvis_net.generate_html()
 
-    node_data = node_data_by_trial_maker[EXP_NAME]
+    node_data = node_data_by_trial_maker[default_exp]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
     min_vertex_id = node_data["vertex_id"].min()
