@@ -137,8 +137,9 @@ def create_visualizer():
         node['title'] = node['label']
 
     graph_html = pyvis_net.generate_html()
+    settings = ["Degree", "Trial Maker ID", "Show Infos", "Graph Seed", "PyVis Physics", "Hide Non-Neighbors"]
 
-    page_html = render_template('dashboard_visualizer.html', graph=graph_html)
+    page_html = render_template('dashboard_visualizer.html', graph=graph_html, settings=settings)
 
     response = make_response(page_html)
     return response

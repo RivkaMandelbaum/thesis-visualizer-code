@@ -11,7 +11,11 @@
     <button id="refresh" onclick="window.location.reload();">Refresh</button>
     <div id="settings-pane" class="sidebar-pane">
       <h2>Settings</h2>
-      <p>Unimplemented</p>
+      {% for setting in settings %}
+        <div class="sub-pane">
+          <h3>{{ setting }}</h3>
+        </div>
+      {% endfor %}
     </div>
   </aside>
   <main class="flex-fill">
