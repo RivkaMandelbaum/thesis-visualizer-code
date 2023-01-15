@@ -22,6 +22,7 @@ PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-d
 #-------------------------  Global variables  --------------------------
 node_data_by_trial_maker = {} # TODO fix
 info_data_by_trial_maker = {} # TODO fix
+global_pos = None #TODO fix
 
 app = Flask(__name__, template_folder='./templates')
 
@@ -143,10 +144,28 @@ def create_visualizer():
 
     # create network
     pyvis_net = Network(directed=True)
-    pyvis_net.from_nx(generate_graph(degree, exp))
+    nx_graph = generate_graph(degree, exp)
 
-    for node in pyvis_net.nodes:
+    # set up network
+    global global_pos
+    if global_pos is None:
+        print('setting global position')
+        global_pos = {}
+        pos = nx.spring_layout(nx_graph)
+
+        vertex_id_map = nx_graph.nodes(data='vertex_id')
+        # convert to vertex-id mapped
+        for n_id, xy in pos.items():
+            v_id = vertex_id_map[n_id]
+            global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+
+    pyvis_net.from_nx(nx_graph)
+
+    for (n_id, node) in pyvis_net.node_map.items():
         node['title'] = node['label']
+        v_id = node['vertex_id']
+        node['x'] = global_pos[v_id]['x']
+        node['y'] = global_pos[v_id]['y']
 
     # generate placeholder values for the template
     graph_html = pyvis_net.generate_html()
