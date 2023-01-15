@@ -104,7 +104,7 @@ def generate_graph(degree, trial_maker_id):
         node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
 
         # label
-        node_label = '    %s    ' % str(int(vert_id)) # this sucks
+        node_label = '    %s    ' % str(int(vert_id)) # this sucks TODO
 
         G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_SHAPE)
 
@@ -134,10 +134,12 @@ def create_visualizer():
     # process data into dicts (global variables)
     process_data()
 
+    # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
     if exp is None or exp not in node_data_by_trial_maker.keys():
         exp = list(node_data_by_trial_maker.keys())[0]
 
+    # find the correct 'degree'
     degree = request.args.get('degree')
     if degree is None:
         degree = node_data_by_trial_maker[exp]["degree"].min()
@@ -146,28 +148,29 @@ def create_visualizer():
     pyvis_net = Network(directed=True)
     nx_graph = generate_graph(degree, exp)
 
-    # set up network
+    # set up global network layout (fixed across degrees)
     global global_pos
     if global_pos is None:
-        print('setting global position')
         global_pos = {}
+
+        # get the networkx node-id-mapped position dict
         pos = nx.spring_layout(nx_graph)
 
+        # convert to vertex-id-mapped position dict
         vertex_id_map = nx_graph.nodes(data='vertex_id')
-        # convert to vertex-id mapped
         for n_id, xy in pos.items():
             v_id = vertex_id_map[n_id]
             global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
+    # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
-
     for (n_id, node) in pyvis_net.node_map.items():
         node['title'] = node['label']
         v_id = node['vertex_id']
-        node['x'] = global_pos[v_id]['x']
-        node['y'] = global_pos[v_id]['y']
+        node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
+        node['y'] = global_pos[v_id]['y'] * 10
 
-    # generate placeholder values for the template
+    # generate values for the template
     graph_html = pyvis_net.generate_html()
 
     node_data = node_data_by_trial_maker[exp]
@@ -176,8 +179,7 @@ def create_visualizer():
     min_vertex_id = node_data["vertex_id"].min()
     max_vertex_id = node_data["vertex_id"].max()
 
-    trialmaker_options = ["graph_experiment", "placeholder"] # node_data_by_trial_maker.keys()
-
+    trialmaker_options = node_data_by_trial_maker.keys()
 
     # render template and return response
     page_html = render_template(
