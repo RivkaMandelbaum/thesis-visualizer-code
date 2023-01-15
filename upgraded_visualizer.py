@@ -7,12 +7,14 @@
 import pandas as pd
 import networkx as nx
 from pyvis.network import Network
-from flask import Flask, render_template, make_response
+from flask import Flask, render_template, make_response, request
 
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
 FAILED_COLOR = 'red'
+
+DEFAULT_SHAPE = 'circle' # puts label inside node
 
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
@@ -100,7 +102,10 @@ def generate_graph(degree, trial_maker_id):
         # color failed nodes
         node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
 
-        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=str(int(vert_id)))
+        # label
+        node_label = '    %s    ' % str(int(vert_id)) # this sucks
+
+        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_SHAPE)
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
@@ -122,17 +127,23 @@ def generate_graph(degree, trial_maker_id):
 
     return G
 
-@app.route('/')
-@app.route('/index')
+@app.route('/', methods=['GET'])
+@app.route('/index', methods=['GET'])
 def create_visualizer():
     # process data into dicts (global variables)
     process_data()
-    default_exp = list(node_data_by_trial_maker.keys())[0]
-    default_degree = node_data_by_trial_maker[default_exp]["degree"].min()
+
+    exp = request.args.get('trial-maker-id')
+    if exp is None or exp not in node_data_by_trial_maker.keys():
+        exp = list(node_data_by_trial_maker.keys())[0]
+
+    degree = request.args.get('degree')
+    if degree is None:
+        degree = node_data_by_trial_maker[exp]["degree"].min()
 
     # create network
     pyvis_net = Network(directed=True)
-    pyvis_net.from_nx(generate_graph(default_degree, default_exp))
+    pyvis_net.from_nx(generate_graph(degree, exp))
 
     for node in pyvis_net.nodes:
         node['title'] = node['label']
@@ -140,20 +151,23 @@ def create_visualizer():
     # generate placeholder values for the template
     graph_html = pyvis_net.generate_html()
 
-    node_data = node_data_by_trial_maker[default_exp]
+    node_data = node_data_by_trial_maker[exp]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
     min_vertex_id = node_data["vertex_id"].min()
     max_vertex_id = node_data["vertex_id"].max()
+
+    trialmaker_options = ["graph_experiment", "placeholder"] # node_data_by_trial_maker.keys()
 
 
     # render template and return response
     page_html = render_template(
         'dashboard_visualizer.html',
         graph=graph_html,
-        trialmaker_options=node_data_by_trial_maker.keys(),
+        trialmaker_options=trialmaker_options,
         degree_min=min_degree,
         degree_max=max_degree,
+        degree_placeholder=degree,
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
