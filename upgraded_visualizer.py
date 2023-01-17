@@ -106,7 +106,7 @@ def generate_graph(degree, trial_maker_id):
         # label
         node_label = '    %s    ' % str(int(vert_id)) # this sucks TODO
 
-        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_SHAPE)
+        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_SHAPE, labelHighlightBold=True)
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
@@ -133,6 +133,9 @@ def generate_graph(degree, trial_maker_id):
 def create_visualizer():
     # process data into dicts (global variables)
     process_data()
+
+    clicked_node = request.args.get('clicked-node')
+    print("clicked node: " + str(clicked_node))
 
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
@@ -170,6 +173,10 @@ def create_visualizer():
         node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
         node['y'] = global_pos[v_id]['y'] * 10
 
+        if str(n_id) == str(clicked_node):
+            print('clicked node was found')
+            node['color'] = 'blue'
+
     # generate values for the template
     graph_html = pyvis_net.generate_html()
 
@@ -192,6 +199,7 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
+        content="PLACEHOLDER CONTENT FOR NODE ID " + clicked_node
         )
 
     response = make_response(page_html)

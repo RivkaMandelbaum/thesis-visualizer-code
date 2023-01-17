@@ -1,7 +1,10 @@
 __pycache__/
 slice*.html
+graph_examples/*
 .DS_Store
 
 # Old test files
 test_zipping.zip
 nx.html
+
+.gitignore

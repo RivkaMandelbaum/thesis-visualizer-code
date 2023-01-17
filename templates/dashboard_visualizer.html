@@ -1,5 +1,6 @@
 {% block stylesheets %}
   <script src="https://use.fontawesome.com/ffb1fe552d.js"></script>
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link href="{{ url_for('static', filename='vis@4.17.0/dist/vis-network.min.css') }}" rel="stylesheet" type="text/css"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" type="text/css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" type="text/css">
@@ -65,6 +66,12 @@
     <section id="details-pane">
       <h2>Details</h2>
       <div id="element-details">
+        <div id="details-content">
+          {{ content | safe}}
+        </div>
+        <form action="index" method="get" id="clicked-node-form" style="display:none">
+          <input type="number" id="clicked-node-input" name="clicked-node" style="display:none">
+      </form>
       </div>
     </section>
   </main>
