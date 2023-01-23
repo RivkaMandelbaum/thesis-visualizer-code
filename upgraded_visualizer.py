@@ -104,10 +104,7 @@ def generate_graph(degree, trial_maker_id):
         # color failed nodes
         node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
 
-        # label
-        node_label = '    %s    ' % str(int(vert_id)) # this sucks TODO
-
-        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_NODE_SHAPE, labelHighlightBold=True)
+        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=create_label(node_id), shape=DEFAULT_NODE_SHAPE, labelHighlightBold=True)
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
@@ -141,6 +138,15 @@ def get_node_content(exp, node_id):
     string_data = node_data[node_data["id"] == int(node_id)].squeeze().to_json()
 
     return string_data
+
+def create_label(id):
+    # this sucks TODO
+    try:
+        label = '    %s    ' % str(int(id))
+    except ValueError:
+        label = '    %s    ' % str(id)
+
+    return label
 
 @app.route('/', methods=['GET'])
 @app.route('/index', methods=['GET'])
