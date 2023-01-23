@@ -13,8 +13,9 @@ from flask import Flask, render_template, make_response, request
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
 FAILED_COLOR = 'red'
+CLICKED_COLOR = 'blue'
 
-DEFAULT_SHAPE = 'circle' # puts label inside node
+DEFAULT_NODE_SHAPE = 'circle' # puts label inside node
 
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
@@ -106,7 +107,7 @@ def generate_graph(degree, trial_maker_id):
         # label
         node_label = '    %s    ' % str(int(vert_id)) # this sucks TODO
 
-        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_SHAPE, labelHighlightBold=True)
+        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=node_label, shape=DEFAULT_NODE_SHAPE, labelHighlightBold=True)
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
@@ -148,7 +149,6 @@ def create_visualizer():
     process_data()
 
     clicked_node = request.args.get('clicked-node')
-    print("clicked node: " + str(clicked_node))
 
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
@@ -187,8 +187,7 @@ def create_visualizer():
         node['y'] = global_pos[v_id]['y'] * 10
 
         if str(n_id) == str(clicked_node):
-            print('clicked node was found')
-            node['color'] = 'blue'
+            node['color'] = CLICKED_COLOR
 
     # generate values for the template
     graph_html = pyvis_net.generate_html()
