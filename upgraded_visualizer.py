@@ -180,6 +180,18 @@ def create_visualizer():
     # generate values for the template
     graph_html = pyvis_net.generate_html()
 
+    script_to_replace = 'network = new vis.Network(container, data, options);'
+    click_script = 'network = new vis.Network(container, data, options);\
+        network.on("click", function(properties) {\
+            let node_id = properties.nodes[0];\
+            node_form = document.getElementById("clicked-node-form");\
+            node_form_input = document.getElementById("clicked-node-input");\
+            node_form_input.value = node_id;\
+            node_form.submit();\
+        })'
+
+    graph_html = graph_html.replace(script_to_replace, click_script)
+
     node_data = node_data_by_trial_maker[exp]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
@@ -199,7 +211,7 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content="PLACEHOLDER CONTENT FOR NODE ID " + clicked_node
+        content="PLACEHOLDER CONTENT FOR NODE ID " + str(clicked_node)
         )
 
     response = make_response(page_html)
