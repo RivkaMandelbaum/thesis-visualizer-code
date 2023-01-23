@@ -128,6 +128,19 @@ def generate_graph(degree, trial_maker_id):
 
     return G
 
+def get_node_content(exp, node_id):
+    # validation
+    if exp not in node_data_by_trial_maker.keys():
+        return "An error has occurred. Content cannot be displayed."
+
+    if node_id in [None, '']:
+        return "No content to display."
+
+    node_data = node_data_by_trial_maker[exp]
+    string_data = node_data[node_data["id"] == int(node_id)].squeeze().to_json()
+
+    return string_data
+
 @app.route('/', methods=['GET'])
 @app.route('/index', methods=['GET'])
 def create_visualizer():
@@ -211,7 +224,7 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content="PLACEHOLDER CONTENT FOR NODE ID " + str(clicked_node)
+        content=get_node_content(exp, clicked_node)
         )
 
     response = make_response(page_html)
