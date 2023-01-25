@@ -167,7 +167,8 @@ def generate_graph(degree, trial_maker_id):
                 labelHighlightBold=True,
                 origin_id=node_id,
                 shape=DEFAULT_INFO_SHAPE,
-                vertex_id=vert_id
+                vertex_id=vert_id,
+                hidden=True
             )
             G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
 
