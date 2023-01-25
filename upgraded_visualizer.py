@@ -82,7 +82,7 @@ def from_graph_id(graph_id):
     """ Convert a graph id string (id with 'n' or 'i' prepended) to an integer
     that can be used to find the id in the Dataframes and a boolean indicating
     whether the id was for a node or an info.
-    If passed an integer without prepended string, returns (id, None)
+    If passed an integer without prepended string, returns (id, None). If passed 'undefined', returns ('', None)
     Arguments: graph_id string
     Returns: id int, is_info bool or None
     """
@@ -90,6 +90,9 @@ def from_graph_id(graph_id):
         id = int(graph_id)
         return (id, None)
     except ValueError:
+        if graph_id == 'undefined':
+            return ('', None)
+
         id = int(graph_id[1:])
         if graph_id[0] == 'i':
             return (id, True)
@@ -222,7 +225,7 @@ def create_label(id):
 @app.route('/index', methods=['GET'])
 def create_visualizer():
     # process data into dicts (global variables)
-    global processing_done
+    global processing_done #TODO: Development only!
     if not processing_done:
         process_data()
         processing_done = True
