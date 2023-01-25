@@ -16,6 +16,7 @@ FAILED_COLOR = 'red'
 CLICKED_COLOR = 'blue'
 
 DEFAULT_NODE_SHAPE = 'circle' # puts label inside node
+DEFAULT_INFO_SHAPE = 'box'
 
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
@@ -72,11 +73,10 @@ def generate_graph(degree, trial_maker_id):
         try:
             degree = float(degree)
         except Exception as ex:
-            raise("When converting degree to float, the following exception occured: " + str(ex))
+            raise Exception("When converting degree to float, the following exception occured: " + str(ex))
 
     # validation: ensure trial_maker_id is valid
     if trial_maker_id not in node_data_by_trial_maker.keys():
-        print(node_data_by_trial_maker)
         raise Exception("Invalid trial_maker_id.")
 
     # use correct data for that trial_maker_id
@@ -86,25 +86,55 @@ def generate_graph(degree, trial_maker_id):
     # create graph
     G = nx.DiGraph()
 
-    # add nodes from node_data to the Graph
+    # add nodes from node_data to the Graph, and associated infos
     # nodes are identified by their node_id
     # nodes have named attributes vertex_id and degree
+    node_in_G_ct = 0 # DEBUGGING
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
         # extract vertex id
         vert_id = deg_nodes[deg_nodes["id"] == node_id]["vertex_id"].values[0]
 
-        # add metadata from infos
-        info_row = info_data[info_data["origin_id"] == node_id]
-        try:
-            creation_time = info_row["creation_time"].values[0]
-        except:
-            creation_time = None
-
         # color failed nodes
         node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
 
-        G.add_node(node_id, vertex_id=vert_id, degree=degree, creation_time=creation_time, color=node_color, label=create_label(node_id), shape=DEFAULT_NODE_SHAPE, labelHighlightBold=True)
+        # add node to graph
+        G.add_node(
+            node_id,
+            color=node_color,
+            degree=degree,
+            is_info=False,
+            label=create_label(node_id),
+            labelHighlightBold=True,
+            shape=DEFAULT_NODE_SHAPE,
+            vertex_id=vert_id
+            )
+
+        # add infos, and edges to infos
+        node_infos_data = info_data[info_data["origin_id"] == node_id]
+
+        # process into compatible types
+        if len(node_infos_data) == 1:
+            node_infos = [(None, node_infos_data)]
+        else:
+            node_infos = node_infos_data.iterrows()
+
+        # add the actual infos
+        for _, info in node_infos:
+            info_id = int(info["id"]) * 100
+
+            G.add_node(
+                info_id, #TODO: are nodes getting overwritten?
+                color=node_color,
+                degree=degree,
+                is_info=True,
+                label=create_label(info_id),
+                labelHighlightBold=True,
+                origin_id=node_id,
+                shape=DEFAULT_INFO_SHAPE,
+                vertex_id=vert_id
+            )
+            G.add_edge(node_id, info_id)
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
@@ -124,18 +154,23 @@ def generate_graph(degree, trial_maker_id):
         edge_list = [(int(dependent_node), int(node_id)) for dependent_node in dependent_nodes]
         G.add_edges_from(edge_list)
 
+
     return G
 
-def get_node_content(exp, node_id):
+def get_content(exp, id, is_node):
     # validation
     if exp not in node_data_by_trial_maker.keys():
         return "An error has occurred. Content cannot be displayed."
 
-    if node_id in [None, '']:
+    if id in [None, '']:
         return "No content to display."
 
-    node_data = node_data_by_trial_maker[exp]
-    string_data = node_data[node_data["id"] == int(node_id)].squeeze().to_json()
+    if is_node:
+        data = node_data_by_trial_maker[exp]
+    else:
+        data = info_data_by_trial_maker[exp]
+
+    string_data = data[data["id"] == int(id)].squeeze().to_json()
 
     return string_data
 
@@ -164,30 +199,45 @@ def create_visualizer():
     # find the correct 'degree'
     degree = request.args.get('degree')
     if degree is None:
-        degree = node_data_by_trial_maker[exp]["degree"].min()
+        degree_cookie = request.cookies.get('degree')
+        if degree_cookie is None:
+            degree = node_data_by_trial_maker[exp]["degree"].min()
+        else:
+            degree = float(degree_cookie)
+
 
     # create network
     pyvis_net = Network(directed=True)
     nx_graph = generate_graph(degree, exp)
 
+
     # set up global network layout (fixed across degrees)
     global global_pos
     if global_pos is None:
+        # print("Setting global position")
         global_pos = {}
 
         # get the networkx node-id-mapped position dict
         pos = nx.spring_layout(nx_graph)
 
+
         # convert to vertex-id-mapped position dict
+        v_tracking = {}
+        for i in range(49):
+            v_tracking[i] = 0
         vertex_id_map = nx_graph.nodes(data='vertex_id')
         for n_id, xy in pos.items():
-            v_id = vertex_id_map[n_id]
-            global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+            v_id = int(vertex_id_map[n_id])
+            if v_id is not None:
+                if v_id in v_tracking:
+                    v_tracking[v_id] += 1
+                global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+
 
     # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
     for (n_id, node) in pyvis_net.node_map.items():
-        node['title'] = node['label']
+        node['title'] = str(node['label'])
         v_id = node['vertex_id']
         node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
         node['y'] = global_pos[v_id]['y'] * 10
@@ -216,6 +266,16 @@ def create_visualizer():
     min_vertex_id = node_data["vertex_id"].min()
     max_vertex_id = node_data["vertex_id"].max()
 
+    try:
+        is_node = not (pyvis_net.node_map[int(clicked_node)]['is_info'])
+    except:
+        is_node = False
+        if clicked_node is not None:
+            print("Exception with node " + clicked_node)
+            # print(sorted(list(pyvis_net.node_map.keys())))
+            # print(clicked_node)
+
+
     trialmaker_options = node_data_by_trial_maker.keys()
 
     # render template and return response
@@ -229,8 +289,12 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content=get_node_content(exp, clicked_node)
+        content=get_content(exp, clicked_node, is_node)
         )
 
     response = make_response(page_html)
+
+    response.set_cookie('degree', str(degree))
+    response.set_cookie('exp', exp)
+
     return response
