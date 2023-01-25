@@ -65,6 +65,37 @@ def process_data():
         node_data_by_trial_maker[trial_maker_id] = node_data
         info_data_by_trial_maker[trial_maker_id] = info_data
 
+def to_graph_id(id, is_info):
+    """ Convert an integer node or info id into a string that can be used
+    to uniquely identify the graph node, by prepending 'n' or 'i'.
+    Node ids and info ids can overlap, so this is necessary to differentiate them.
+    Arguments: id (int), is_info (bool)
+    Returns: id string
+    """
+    if is_info:
+        return 'i' + str(id)
+    else:
+        return 'n' + str(id)
+
+def from_graph_id(graph_id):
+    """ Convert a graph id string (id with 'n' or 'i' prepended) to an integer
+    that can be used to find the id in the Dataframes and a boolean indicating
+    whether the id was for a node or an info.
+    If passed an integer without prepended string, returns (id, None)
+    Arguments: graph_id string
+    Returns: id int, is_info bool or None
+    """
+    try:
+        id = int(graph_id)
+        return (id, None)
+    except ValueError:
+        id = int(graph_id[1:])
+        if graph_id[0] == 'i':
+            return (id, True)
+        elif graph_id[0] == 'n':
+            return (id, False)
+
+
 def generate_graph(degree, trial_maker_id):
     ''' Given a degree (int or float) and a trial_maker_id in the experiment, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
     '''
@@ -89,7 +120,6 @@ def generate_graph(degree, trial_maker_id):
     # add nodes from node_data to the Graph, and associated infos
     # nodes are identified by their node_id
     # nodes have named attributes vertex_id and degree
-    node_in_G_ct = 0 # DEBUGGING
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
         # extract vertex id
@@ -100,7 +130,7 @@ def generate_graph(degree, trial_maker_id):
 
         # add node to graph
         G.add_node(
-            node_id,
+            to_graph_id(node_id, False),
             color=node_color,
             degree=degree,
             is_info=False,
@@ -121,10 +151,11 @@ def generate_graph(degree, trial_maker_id):
 
         # add the actual infos
         for _, info in node_infos:
-            info_id = int(info["id"]) * 100
+            info_id = int(info["id"])
+            is_info=True
 
             G.add_node(
-                info_id, #TODO: are nodes getting overwritten?
+                to_graph_id(info_id, is_info),
                 color=node_color,
                 degree=degree,
                 is_info=True,
@@ -134,7 +165,7 @@ def generate_graph(degree, trial_maker_id):
                 shape=DEFAULT_INFO_SHAPE,
                 vertex_id=vert_id
             )
-            G.add_edge(node_id, info_id)
+            G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
@@ -151,13 +182,14 @@ def generate_graph(degree, trial_maker_id):
         dependent_nodes = [n["id"].values[0] for n in dependent_nodes]
 
         # add as edges (dependent node --> curent node)
-        edge_list = [(int(dependent_node), int(node_id)) for dependent_node in dependent_nodes]
+        is_info = False
+        edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
         G.add_edges_from(edge_list)
 
 
     return G
 
-def get_content(exp, id, is_node):
+def get_content(exp, id):
     # validation
     if exp not in node_data_by_trial_maker.keys():
         return "An error has occurred. Content cannot be displayed."
@@ -165,12 +197,14 @@ def get_content(exp, id, is_node):
     if id in [None, '']:
         return "No content to display."
 
+    graph_id, is_node = from_graph_id(id)
+
     if is_node:
         data = node_data_by_trial_maker[exp]
     else:
         data = info_data_by_trial_maker[exp]
 
-    string_data = data[data["id"] == int(id)].squeeze().to_json()
+    string_data = data[data["id"] == graph_id].squeeze().to_json()
 
     return string_data
 
@@ -210,7 +244,6 @@ def create_visualizer():
     pyvis_net = Network(directed=True)
     nx_graph = generate_graph(degree, exp)
 
-
     # set up global network layout (fixed across degrees)
     global global_pos
     if global_pos is None:
@@ -220,29 +253,23 @@ def create_visualizer():
         # get the networkx node-id-mapped position dict
         pos = nx.spring_layout(nx_graph)
 
-
         # convert to vertex-id-mapped position dict
-        v_tracking = {}
-        for i in range(49):
-            v_tracking[i] = 0
         vertex_id_map = nx_graph.nodes(data='vertex_id')
-        for n_id, xy in pos.items():
-            v_id = int(vertex_id_map[n_id])
-            if v_id is not None:
-                if v_id in v_tracking:
-                    v_tracking[v_id] += 1
-                global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
-
+        for graph_id, xy in pos.items():
+            v_id = int(vertex_id_map[graph_id])
+            if v_id not in global_pos:
+                global_pos[v_id] = {}
+            global_pos[v_id][graph_id] = {'x': xy[0] , 'y': xy[1]}
 
     # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
-    for (n_id, node) in pyvis_net.node_map.items():
+    for (graph_id, node) in pyvis_net.node_map.items():
         node['title'] = str(node['label'])
         v_id = node['vertex_id']
-        node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
-        node['y'] = global_pos[v_id]['y'] * 10
+        node['x'] = global_pos[v_id][graph_id]['x'] * 10 # scaling necessary for x,y position to work
+        node['y'] = global_pos[v_id][graph_id]['y'] * 10
 
-        if str(n_id) == str(clicked_node):
+        if str(graph_id) == str(clicked_node):
             node['color'] = CLICKED_COLOR
 
     # generate values for the template
@@ -252,6 +279,7 @@ def create_visualizer():
     click_script = 'network = new vis.Network(container, data, options);\
         network.on("click", function(properties) {\
             let node_id = properties.nodes[0];\
+            console.log(node_id);\
             node_form = document.getElementById("clicked-node-form");\
             node_form_input = document.getElementById("clicked-node-input");\
             node_form_input.value = node_id;\
@@ -266,16 +294,6 @@ def create_visualizer():
     min_vertex_id = node_data["vertex_id"].min()
     max_vertex_id = node_data["vertex_id"].max()
 
-    try:
-        is_node = not (pyvis_net.node_map[int(clicked_node)]['is_info'])
-    except:
-        is_node = False
-        if clicked_node is not None:
-            print("Exception with node " + clicked_node)
-            # print(sorted(list(pyvis_net.node_map.keys())))
-            # print(clicked_node)
-
-
     trialmaker_options = node_data_by_trial_maker.keys()
 
     # render template and return response
@@ -289,7 +307,7 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content=get_content(exp, clicked_node, is_node)
+        content=get_content(exp, clicked_node)
         )
 
     response = make_response(page_html)
