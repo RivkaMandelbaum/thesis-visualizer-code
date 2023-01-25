@@ -100,7 +100,7 @@ def from_graph_id(graph_id):
             return (id, False)
 
 
-def generate_graph(degree, trial_maker_id, show_infos):
+def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     ''' Given a degree (int or float) and a trial_maker_id in the experiment,
     and whether to show infos, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
     '''
@@ -131,7 +131,12 @@ def generate_graph(degree, trial_maker_id, show_infos):
         vert_id = deg_nodes[deg_nodes["id"] == node_id]["vertex_id"].values[0]
 
         # color failed nodes
-        node_color = DEFAULT_COLOR if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "f") else FAILED_COLOR
+        node_color = DEFAULT_COLOR
+        if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "t"):
+            node_color = FAILED_COLOR
+        elif to_graph_id(node_id, False) == clicked_node:
+            node_color = CLICKED_COLOR
+
 
         # add node to graph
         G.add_node(
@@ -157,7 +162,10 @@ def generate_graph(degree, trial_maker_id, show_infos):
         # add the actual infos
         for _, info in node_infos:
             info_id = int(info["id"])
+
             is_info=True
+
+            info_is_hidden = not (show_infos and (to_graph_id(node_id, False) == clicked_node))
 
             G.add_node(
                 to_graph_id(info_id, is_info),
@@ -169,7 +177,7 @@ def generate_graph(degree, trial_maker_id, show_infos):
                 origin_id=node_id,
                 shape=DEFAULT_INFO_SHAPE,
                 vertex_id=vert_id,
-                hidden=(not show_infos)
+                hidden=info_is_hidden
             )
             G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
 
@@ -253,11 +261,14 @@ def create_visualizer():
     if show_infos == "on":
         show_infos = True
     else:
-        show_infos = False
+        if request.cookies.get('show-infos') == "on":
+            show_infos = True
+        else:
+            show_infos = False
 
     # create network
     pyvis_net = Network(directed=True)
-    nx_graph = generate_graph(degree, exp, show_infos)
+    nx_graph = generate_graph(degree, exp, show_infos, clicked_node)
 
     # set up global network layout (fixed across degrees)
     global global_pos
@@ -321,12 +332,14 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content=get_content(exp, clicked_node)
+        content=get_content(exp, clicked_node),
+        show_infos_checked=("checked" if show_infos else "")
         )
 
     response = make_response(page_html)
 
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
+    response.set_cookie('show-infos', ("on" if show_infos else "off"))
 
     return response
