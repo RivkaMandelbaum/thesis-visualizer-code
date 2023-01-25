@@ -35,7 +35,9 @@
       </div>
       <div class="sub-pane">
         <h3>Show Infos</h3>
-        <input type="checkbox" id="show-infos" name="show-infos">
+        <form action="index" method="get">
+          <input type="checkbox" id="show-infos" name="show-infos" onchange=this.form.submit()>
+        </form>
       </div>
       <div class="sub-pane">
         <h3>Graph Seed</h3>

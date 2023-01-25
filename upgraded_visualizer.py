@@ -100,8 +100,9 @@ def from_graph_id(graph_id):
             return (id, False)
 
 
-def generate_graph(degree, trial_maker_id):
-    ''' Given a degree (int or float) and a trial_maker_id in the experiment, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
+def generate_graph(degree, trial_maker_id, show_infos):
+    ''' Given a degree (int or float) and a trial_maker_id in the experiment,
+    and whether to show infos, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
     '''
     # validation: ensure degree is a float
     if not isinstance(degree, float):
@@ -168,7 +169,7 @@ def generate_graph(degree, trial_maker_id):
                 origin_id=node_id,
                 shape=DEFAULT_INFO_SHAPE,
                 vertex_id=vert_id,
-                hidden=True
+                hidden=(not show_infos)
             )
             G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
 
@@ -247,10 +248,16 @@ def create_visualizer():
         else:
             degree = float(degree_cookie)
 
+    # check whether show infos is on, convert to boolean
+    show_infos = request.args.get('show-infos')
+    if show_infos == "on":
+        show_infos = True
+    else:
+        show_infos = False
 
     # create network
     pyvis_net = Network(directed=True)
-    nx_graph = generate_graph(degree, exp)
+    nx_graph = generate_graph(degree, exp, show_infos)
 
     # set up global network layout (fixed across degrees)
     global global_pos
