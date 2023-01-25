@@ -25,6 +25,7 @@ PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-d
 node_data_by_trial_maker = {} # TODO fix
 info_data_by_trial_maker = {} # TODO fix
 global_pos = None #TODO fix
+processing_done = False
 
 app = Flask(__name__, template_folder='./templates')
 
@@ -197,9 +198,9 @@ def get_content(exp, id):
     if id in [None, '']:
         return "No content to display."
 
-    graph_id, is_node = from_graph_id(id)
+    graph_id, is_info = from_graph_id(id)
 
-    if is_node:
+    if not is_info:
         data = node_data_by_trial_maker[exp]
     else:
         data = info_data_by_trial_maker[exp]
@@ -221,7 +222,10 @@ def create_label(id):
 @app.route('/index', methods=['GET'])
 def create_visualizer():
     # process data into dicts (global variables)
-    process_data()
+    global processing_done
+    if not processing_done:
+        process_data()
+        processing_done = True
 
     clicked_node = request.args.get('clicked-node')
 
@@ -250,24 +254,23 @@ def create_visualizer():
         # print("Setting global position")
         global_pos = {}
 
-        # get the networkx node-id-mapped position dict
+        # get the networkx graph-id-mapped position dict
         pos = nx.spring_layout(nx_graph)
 
-        # convert to vertex-id-mapped position dict
+        # convert to vertex-id-mapped position dict, with only node positions added
         vertex_id_map = nx_graph.nodes(data='vertex_id')
         for graph_id, xy in pos.items():
             v_id = int(vertex_id_map[graph_id])
-            if v_id not in global_pos:
-                global_pos[v_id] = {}
-            global_pos[v_id][graph_id] = {'x': xy[0] , 'y': xy[1]}
+            if graph_id[0] == 'n':
+                global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
     # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
     for (graph_id, node) in pyvis_net.node_map.items():
         node['title'] = str(node['label'])
         v_id = node['vertex_id']
-        node['x'] = global_pos[v_id][graph_id]['x'] * 10 # scaling necessary for x,y position to work
-        node['y'] = global_pos[v_id][graph_id]['y'] * 10
+        node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
+        node['y'] = global_pos[v_id]['y'] * 10
 
         if str(graph_id) == str(clicked_node):
             node['color'] = CLICKED_COLOR
