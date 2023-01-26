@@ -89,8 +89,8 @@ def from_graph_id(graph_id):
     try:
         id = int(graph_id)
         return (id, None)
-    except ValueError:
-        if graph_id == 'undefined':
+    except:
+        if graph_id in ['undefined', None]:
             return ('', None)
 
         id = int(graph_id[1:])
@@ -137,7 +137,6 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
         elif to_graph_id(node_id, False) == clicked_node:
             node_color = CLICKED_COLOR
 
-
         # add node to graph
         G.add_node(
             to_graph_id(node_id, False),
@@ -165,7 +164,7 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
 
             is_info=True
 
-            info_is_hidden = not (show_infos and (to_graph_id(node_id, False) == clicked_node))
+            info_is_hidden = not (show_infos and ((to_graph_id(node_id, False) == clicked_node) or (to_graph_id(info_id, True) == clicked_node)))
 
             G.add_node(
                 to_graph_id(info_id, is_info),
