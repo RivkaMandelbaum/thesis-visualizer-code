@@ -286,13 +286,16 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     return G
 
 def get_content(exp, id):
+    ''' Get the content of a node/info in a given trial_maker_id to display
+    in the content box.
+    '''
     # validation
     if exp not in node_data_by_trial_maker.keys():
         return "An error has occurred. Content cannot be displayed."
-
     if id in [None, '']:
         return "No content to display."
 
+    # get the content
     graph_id, is_info = from_graph_id(id)
 
     if not is_info:
@@ -300,11 +303,15 @@ def get_content(exp, id):
     else:
         data = info_data_by_trial_maker[exp]
 
+    # format content and return
     string_data = data[data["id"] == graph_id].squeeze().to_json()
 
     return string_data
 
 def create_label(id):
+    ''' Create a label for node/info with given id. The label goes inside
+    the node/info when the graph is rendered.
+    '''
     # this sucks TODO
     try:
         label = '    %s    ' % str(int(id))
