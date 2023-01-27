@@ -89,7 +89,7 @@ def from_graph_id(graph_id):
     """ Convert a graph id string (id with 'n' or 'i' prepended) to an integer
     that can be used to find the id in the Dataframes and a boolean indicating
     whether the id was for a node or an info.
-    If passed an integer without prepended string, returns (id, None). If passed 'undefined', returns ('', None)
+    If passed an integer without prepended string, returns (id, None). If passed 'undefined' or None, returns ('', None)
     Arguments: graph_id string
     Returns: id int, is_info bool or None
     """
@@ -106,10 +106,144 @@ def from_graph_id(graph_id):
         elif graph_id[0] == 'n':
             return (id, False)
 
+def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node):
+    """ Adds node to networkx DiGraph.
+        Arguments:
+            G: networkx DiGraph
+            degree: float
+            trial_maker_id: string
+            node_id: int
+            clicked_node: string (in graph_id format)
+        Node attributes:
+            graph_id    ('n' + 'id' field)
+            color
+            degree
+            is_info     (False)
+            label       ('id' with spacing)
+            labelHighlightBold (True)
+            shape       (DEFAULT_NODE_SHAPE)
+            vertex_id   ('vertex_id' field)
+    """
+    # filter data
+    node_data = node_data_by_trial_maker[trial_maker_id]
+    info_data = info_data_by_trial_maker[trial_maker_id]
+    clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
+
+    # extract vertex id
+    vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
+
+    # set node color (clicked/failed)
+    node_color = DEFAULT_COLOR
+    if to_graph_id(node_id, False) == clicked_node: # node was clicked on
+            node_color = CLICKED_COLOR
+    elif clicked_is_info and info_data[info_data["id"] == clicked_graph_id]["origin_id"].values[0] == node_id: # node's info was clicked on
+        node_color = CLICKED_COLOR
+    # color failed nodes (overwrites clicked coloring if relevant)
+    if (node_data[node_data["id"] == node_id]["failed"].values[0] == "t"):
+        node_color = FAILED_COLOR
+
+    # add node to graph
+    G.add_node(
+        to_graph_id(node_id, False),
+        color=node_color,
+        degree=degree,
+        is_info=False,
+        label=create_label(node_id),
+        labelHighlightBold=True,
+        shape=DEFAULT_NODE_SHAPE,
+        vertex_id=vert_id
+        )
+
+def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos):
+    """ Adds infos associated with given node_id to networkx DiGraph, and edges.
+        Arguments:
+            G: networkx DiGraph
+            degree: float
+            trial_maker_id: string
+            node_id: int
+            clicked_node: string (in graph_id format)
+            show_infos: bool
+        Info attributes:
+            graph_id    ('i' + 'id' field)
+            color
+            degree
+            is_info     (True)
+            label       ('id' field with spacing)
+            labelHighlightBold (True)
+            origin_id   (origin node's 'id' field)
+            shape       (DEFAULT_INFO_SHAPE)
+            vertex_id   (origin node's 'vertex_id' field)
+            hidden      (bool, depends on settings)
+    """
+    # get associated info data
+    node_data = node_data_by_trial_maker[trial_maker_id]
+    info_data = info_data_by_trial_maker[trial_maker_id]
+    node_infos_data = info_data[info_data["origin_id"] == node_id]
+
+    if len(node_infos_data) == 1: # process to make compatible format
+        node_infos = [(None, node_infos_data)]
+    else:
+        node_infos = node_infos_data.iterrows()
+
+    # add the actual infos
+    for _, info in node_infos:
+        info_id = int(info["id"])
+
+        is_info=True
+
+        info_is_hidden = not (show_infos and ((to_graph_id(node_id, False) == clicked_node) or (to_graph_id(info_id, True) == clicked_node)))
+
+        # set node color (clicked/failed)
+        info_color = DEFAULT_COLOR
+        if to_graph_id(node_id, False) == clicked_node: # node was clicked on
+            info_color = CLICKED_COLOR
+        elif to_graph_id(info_id, True) == clicked_node: # info was clicked on
+            info_color = CLICKED_COLOR
+        # color failed nodes (overwrites clicked coloring if relevant)
+        if (info_data[info_data["id"] == info_id]["failed"].values[0] == "t"):
+            info_color = FAILED_COLOR
+
+        vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
+
+        G.add_node(
+            to_graph_id(info_id, is_info),
+            color=info_color,
+            degree=degree,
+            is_info=is_info,
+            label=create_label(info_id),
+            labelHighlightBold=True,
+            origin_id=node_id,
+            shape=DEFAULT_INFO_SHAPE,
+            vertex_id=vert_id,
+            hidden=info_is_hidden
+        )
+        G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
+
+def add_edges_to_networkx(G, degree, trial_maker_id, row):
+    """ Add incoming edges of the given node to G, using dependent_vertex_ids.
+    """
+    node_data = node_data_by_trial_maker[trial_maker_id]
+    node_id = row["id"]
+    deg_nodes = node_data[node_data["degree"] == degree]
+
+    # get dependent vertices (incoming edges) in a list
+    dependent_vertices = row["dependent_vertex_ids"].strip('][').split(',')
+
+    # find the corresponding row of deg_nodes for each vertex_id
+    dependent_nodes = [deg_nodes[deg_nodes["vertex_id"] == float(v)] for v in dependent_vertices]
+
+    # extract the node_id from each dependent vertex row
+    dependent_nodes = [n["id"].values[0] for n in dependent_nodes]
+
+    # add as edges (dependent node --> curent node)
+    is_info = False
+    edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
+    G.add_edges_from(edge_list)
+
 
 def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     ''' Given a degree (int or float) and a trial_maker_id in the experiment,
-    and whether to show infos, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
+    whether to show infos (bool), and the id of the clicked node, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
     '''
     # validation: ensure degree is a float
     if not isinstance(degree, float):
@@ -122,90 +256,32 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     if trial_maker_id not in node_data_by_trial_maker.keys():
         raise Exception("Invalid trial_maker_id.")
 
+    # validation: ensure clicked_node is present in the data
+    clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
+    if clicked_is_info:
+        print('checking info')
+        if clicked_graph_id not in info_data_by_trial_maker[trial_maker_id]["id"].values:
+            raise Exception("Error: Clicked info is not present in data.")
+    elif clicked_is_info != None:
+        if clicked_graph_id not in node_data_by_trial_maker[trial_maker_id]["id"].values:
+            raise Exception("Error: Clicked node is not present in data.")
+
     # use correct data for that trial_maker_id
     node_data = node_data_by_trial_maker[trial_maker_id]
-    info_data = info_data_by_trial_maker[trial_maker_id]
 
     # create graph
     G = nx.DiGraph()
 
     # add nodes from node_data to the Graph, and associated infos
-    # nodes are identified by their node_id
-    # nodes have named attributes vertex_id and degree
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
-        # extract vertex id
-        vert_id = deg_nodes[deg_nodes["id"] == node_id]["vertex_id"].values[0]
-
-        # color failed nodes
-        node_color = DEFAULT_COLOR
-        if (deg_nodes[deg_nodes["id"] == node_id]["failed"].values[0] == "t"):
-            node_color = FAILED_COLOR
-        elif to_graph_id(node_id, False) == clicked_node:
-            node_color = CLICKED_COLOR
-
-        # add node to graph
-        G.add_node(
-            to_graph_id(node_id, False),
-            color=node_color,
-            degree=degree,
-            is_info=False,
-            label=create_label(node_id),
-            labelHighlightBold=True,
-            shape=DEFAULT_NODE_SHAPE,
-            vertex_id=vert_id
-            )
-
-        # add infos, and edges to infos
-        node_infos_data = info_data[info_data["origin_id"] == node_id]
-
-        # process into compatible types
-        if len(node_infos_data) == 1:
-            node_infos = [(None, node_infos_data)]
-        else:
-            node_infos = node_infos_data.iterrows()
-
-        # add the actual infos
-        for _, info in node_infos:
-            info_id = int(info["id"])
-
-            is_info=True
-
-            info_is_hidden = not (show_infos and ((to_graph_id(node_id, False) == clicked_node) or (to_graph_id(info_id, True) == clicked_node)))
-
-            G.add_node(
-                to_graph_id(info_id, is_info),
-                color=node_color,
-                degree=degree,
-                is_info=True,
-                label=create_label(info_id),
-                labelHighlightBold=True,
-                origin_id=node_id,
-                shape=DEFAULT_INFO_SHAPE,
-                vertex_id=vert_id,
-                hidden=info_is_hidden
-            )
-            G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
+        add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node)
+        add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos)
 
     # add edges to the Graph: iterate over deg_nodes, add incoming edges
     # using dependent_vertex_ids column
     for _, ser in deg_nodes.iterrows():
-        node_id = ser["id"]
-
-        # get dependent vertices (incoming edges) in a list
-        dependent_vertices = ser["dependent_vertex_ids"].strip('][').split(',')
-
-        # find the corresponding row of deg_nodes for each vertex_id
-        dependent_nodes = [deg_nodes[deg_nodes["vertex_id"] == float(v)] for v in dependent_vertices]
-
-        # extract the node_id from each dependent vertex row
-        dependent_nodes = [n["id"].values[0] for n in dependent_nodes]
-
-        # add as edges (dependent node --> curent node)
-        is_info = False
-        edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
-        G.add_edges_from(edge_list)
-
+        add_edges_to_networkx(G, degree, trial_maker_id, ser)
 
     return G
 
