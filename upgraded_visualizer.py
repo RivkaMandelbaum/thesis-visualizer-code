@@ -32,6 +32,14 @@ app = Flask(__name__, template_folder='./templates')
 #-----------------------------------------------------------------------
 #----------------------------  Functions  ------------------------------
 def process_data():
+    """ Reads the CSVs produced by exporting data into data structures
+    that can be used by the visualizer. Specifically, fills in global
+    dicts node_data_by_trial_maker and info_data_by_trial_maker, so that
+    each one has trial_maker_id:Dataframe pairs. node_data_by_trial_maker
+    contains filtered data from node.csv, and info_data_by_trial_maker
+    contains filtered data from info.csv.
+    """
+    # read CSVs
     nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
     networks = pd.read_csv(PATH + "network.csv", low_memory=False)
     infos = pd.read_csv(PATH + "info.csv")
@@ -40,17 +48,17 @@ def process_data():
     network_data = networks
     network_data = network_data[network_data["role"] == "experiment"]
 
-    # filter per trial maker ID
+    # fill in node data and info data, for each trial_maker_id
     trial_maker_ids = network_data["trial_maker_id"].unique()
 
     for trial_maker_id in trial_maker_ids:
+        # find relevant network ids for this trial_maker_id
         network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
-
         experiment_network_ids = list(network_data['id'].to_numpy())
 
-        # filter nodes; sort
+        # filter and sort nodes
         node_data = nodes
-        node_data = node_data[nodes["type"] == "graph_chain_node"]
+        node_data = node_data[nodes["type"] == "graph_chain_node"] #TODO generalizable?
         node_data = node_data[node_data["network_id"].isin(experiment_network_ids)]
         node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids", "failed"]]
         node_data = node_data.sort_values(["network_id", "degree"])
@@ -59,10 +67,9 @@ def process_data():
         info_data = infos
         info_data = info_data[infos["type"] == "graph_chain_trial"]
         info_data = info_data[["id", "creation_time", "details", "origin_id", "network_id", "participant_id", "failed"]] # TODO: Probably want more columns here
-
         info_data = info_data.sort_values(["network_id", "origin_id"])
 
-        # add to the dictionary
+        # add filtered Dataframes to the global dicts
         node_data_by_trial_maker[trial_maker_id] = node_data
         info_data_by_trial_maker[trial_maker_id] = info_data
 
