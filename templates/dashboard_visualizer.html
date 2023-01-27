@@ -19,9 +19,7 @@
       <h2>Settings</h2>
       <div class="sub-pane">
         <h3>Degree</h3>
-        <form action="index" method="get">
           <input type="number" id="degree" name="degree" min={{degree_min}} max={{degree_max}} placeholder={{degree_placeholder}}>
-        </form>
       </div>
       <div class="sub-pane">
         <h3>Trial Maker ID</h3>
@@ -63,7 +61,7 @@
   <main class="flex-fill">
     <section id="mynetwork">
       <h2>Graph</h2>
-      <div> {{ graph | safe }} </div>
+      <div id="graph"> {{ graph | safe }} </div>
     </section>
     <section id="details-pane">
       <h2>Details</h2>
@@ -77,5 +75,43 @@
       </div>
     </section>
   </main>
+  <script src=
+   "https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js">
+    </script>
+  <script>
+    'use strict';
+
+    function handleResponse(response) {
+      $('#mynetwork').html(response);
+    }
+
+    let request = null;
+
+    function getGraph() {
+      let degree = encodeURIComponent($('#degree').val());
+      if (!degree) {
+        return
+      }
+
+      let url = '/getgraph?degree=' + degree;
+
+      if (request != null) request.abort();
+
+      request = $.ajax(
+        {
+          type:'GET',
+          url: url,
+          success: handleResponse
+        }
+      )
+    }
+
+    function setup() {
+      $('#degree').on('input', getGraph);
+
+      getGraph();
+    }
+    $('document').ready(setup);
+  </script>
   </div>
 {% endblock %}

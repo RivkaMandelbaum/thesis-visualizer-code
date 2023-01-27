@@ -39,6 +39,10 @@ def process_data():
     contains filtered data from node.csv, and info_data_by_trial_maker
     contains filtered data from info.csv.
     """
+    global processing_done #TODO: Development only!
+    if processing_done:
+        return
+
     # read CSVs
     nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
     networks = pd.read_csv(PATH + "network.csv", low_memory=False)
@@ -72,6 +76,8 @@ def process_data():
         # add filtered Dataframes to the global dicts
         node_data_by_trial_maker[trial_maker_id] = node_data
         info_data_by_trial_maker[trial_maker_id] = info_data
+
+    processing_done = True
 
 def to_graph_id(id, is_info):
     """ Convert an integer node or info id into a string that can be used
@@ -259,7 +265,6 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     # validation: ensure clicked_node is present in the data
     clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
     if clicked_is_info:
-        print('checking info')
         if clicked_graph_id not in info_data_by_trial_maker[trial_maker_id]["id"].values:
             raise Exception("Error: Clicked info is not present in data.")
     elif clicked_is_info != None:
@@ -320,14 +325,114 @@ def create_label(id):
 
     return label
 
+@app.route('/getgraph', methods=['GET'])
+def get_graph():
+    # process data into dicts (global variables)
+    process_data()
+
+    clicked_node = request.args.get('clicked-node')
+
+    # find the correct 'exp' (trial maker id)
+    exp = request.args.get('trial-maker-id')
+    if exp is None or exp not in node_data_by_trial_maker.keys():
+        exp = list(node_data_by_trial_maker.keys())[0]
+
+    # find the correct 'degree'
+    degree = request.args.get('degree')
+    if degree is None:
+        degree_cookie = request.cookies.get('degree')
+        if degree_cookie is None:
+            degree = node_data_by_trial_maker[exp]["degree"].min()
+        else:
+            degree = float(degree_cookie)
+
+    # check whether show infos is on, convert to boolean
+    show_infos = request.args.get('show-infos')
+    if show_infos == "on":
+        show_infos = True
+    else:
+        if request.cookies.get('show-infos') == "on":
+            show_infos = True
+        else:
+            show_infos = False
+
+    # create network
+    pyvis_net = Network(directed=True)
+    nx_graph = generate_graph(degree, exp, show_infos, clicked_node)
+
+    # set up global network layout (fixed across degrees)
+    global global_pos
+    if global_pos is None:
+        # print("Setting global position")
+        global_pos = {}
+
+        # get the networkx graph-id-mapped position dict
+        pos = nx.spring_layout(nx_graph)
+
+        # convert to vertex-id-mapped position dict, with only node positions added
+        vertex_id_map = nx_graph.nodes(data='vertex_id')
+        for graph_id, xy in pos.items():
+            v_id = int(vertex_id_map[graph_id])
+            if graph_id[0] == 'n':
+                global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+
+    # read networkx graph into pyvis, add necessary attributes
+    pyvis_net.from_nx(nx_graph)
+    for (graph_id, node) in pyvis_net.node_map.items():
+        node['title'] = str(node['label'])
+        v_id = node['vertex_id']
+        node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
+        node['y'] = global_pos[v_id]['y'] * 10
+
+        if str(graph_id) == str(clicked_node):
+            node['color'] = CLICKED_COLOR
+
+    # generate default html with pyvis template
+    graph_html = pyvis_net.generate_html()
+
+    # modify pyvis html script
+    script_to_replace = 'network = new vis.Network(container, data, options);'
+    click_script = 'network = new vis.Network(container, data, options);\
+        network.on("click", function(properties) {\
+            let node_id = properties.nodes[0];\
+            console.log(node_id);\
+            setTimeout(1000);\
+            if (node_id != undefined) {\
+                node_form = document.getElementById("clicked-node-form");\
+                node_form_input = document.getElementById("clicked-node-input");\
+                node_form_input.value = node_id;\
+                node_form.submit();\
+            }\
+        })'
+
+    graph_html = graph_html.replace(script_to_replace, click_script)
+
+    # remove parts of HTML document
+    html_strings_to_remove = [
+        '<html>\n',
+        '</html>',
+        '<head>\n',
+        '</head>\n',
+        '<body>\n',
+        '</body>',
+        '<meta charset="utf-8">\n'
+    ]
+    for html_string in html_strings_to_remove:
+        graph_html = graph_html.replace(html_string, '')
+
+    response = make_response(graph_html)
+
+    response.set_cookie('degree', str(degree))
+    response.set_cookie('exp', exp)
+    response.set_cookie('show-infos', ("on" if show_infos else "off"))
+
+    return response
+
 @app.route('/', methods=['GET'])
 @app.route('/index', methods=['GET'])
 def create_visualizer():
     # process data into dicts (global variables)
-    global processing_done #TODO: Development only!
-    if not processing_done:
-        process_data()
-        processing_done = True
+    process_data()
 
     clicked_node = request.args.get('clicked-node')
 
@@ -394,10 +499,13 @@ def create_visualizer():
         network.on("click", function(properties) {\
             let node_id = properties.nodes[0];\
             console.log(node_id);\
-            node_form = document.getElementById("clicked-node-form");\
-            node_form_input = document.getElementById("clicked-node-input");\
-            node_form_input.value = node_id;\
-            node_form.submit();\
+            setTimeout(1000);\
+            if (node_id != undefined) {\
+                node_form = document.getElementById("clicked-node-form");\
+                node_form_input = document.getElementById("clicked-node-input");\
+                node_form_input.value = node_id;\
+                node_form.submit();\
+            }\
         })'
 
     graph_html = graph_html.replace(script_to_replace, click_script)
@@ -417,7 +525,7 @@ def create_visualizer():
         trialmaker_options=trialmaker_options,
         degree_min=min_degree,
         degree_max=max_degree,
-        degree_placeholder=degree,
+        degree_placeholder=int(degree),
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
