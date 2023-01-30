@@ -31,6 +31,78 @@ app = Flask(__name__, template_folder='./templates')
 
 #-----------------------------------------------------------------------
 #----------------------------  Functions  ------------------------------
+#-----------------------------------------------------------------------
+
+#---------------------- Simple helper functions --------------------------
+def to_graph_id(id, is_info):
+    """ Convert an integer node or info id into a string that can be used
+    to uniquely identify the graph node, by prepending 'n' or 'i'.
+    Node ids and info ids can overlap, so this is necessary to differentiate them.
+    Arguments: id (int), is_info (bool)
+    Returns: id string
+    """
+    if is_info:
+        return 'i' + str(id)
+    else:
+        return 'n' + str(id)
+
+def from_graph_id(graph_id):
+    """ Convert a graph id string (id with 'n' or 'i' prepended) to an integer
+    that can be used to find the id in the Dataframes and a boolean indicating
+    whether the id was for a node or an info.
+    If passed an integer without prepended string, returns (id, None). If passed 'undefined' or None, returns ('', None)
+    Arguments: graph_id string
+    Returns: id int, is_info bool or None
+    """
+    try:
+        id = int(graph_id)
+        return (id, None)
+    except:
+        if graph_id in ['undefined', None]:
+            return ('', None)
+
+        id = int(graph_id[1:])
+        if graph_id[0] == 'i':
+            return (id, True)
+        elif graph_id[0] == 'n':
+            return (id, False)
+
+def get_content(exp, id):
+    ''' Get the content of a node/info in a given trial_maker_id to display
+    in the content box.
+    '''
+    # validation
+    if exp not in node_data_by_trial_maker.keys():
+        return "An error has occurred. Content cannot be displayed."
+    if id in [None, '']:
+        return "No content to display."
+
+    # get the content
+    graph_id, is_info = from_graph_id(id)
+
+    if not is_info:
+        data = node_data_by_trial_maker[exp]
+    else:
+        data = info_data_by_trial_maker[exp]
+
+    # format content and return
+    string_data = data[data["id"] == graph_id].squeeze().to_json()
+
+    return string_data
+
+def create_label(id):
+    ''' Create a label for node/info with given id. The label goes inside
+    the node/info when the graph is rendered.
+    '''
+    # this sucks TODO
+    try:
+        label = '    %s    ' % str(int(id))
+    except ValueError:
+        label = '    %s    ' % str(id)
+
+    return label
+
+#---------------------- Complex helper functions --------------------------
 def process_data():
     """ Reads the CSVs produced by exporting data into data structures
     that can be used by the visualizer. Specifically, fills in global
@@ -79,38 +151,48 @@ def process_data():
 
     processing_done = True
 
-def to_graph_id(id, is_info):
-    """ Convert an integer node or info id into a string that can be used
-    to uniquely identify the graph node, by prepending 'n' or 'i'.
-    Node ids and info ids can overlap, so this is necessary to differentiate them.
-    Arguments: id (int), is_info (bool)
-    Returns: id string
-    """
-    if is_info:
-        return 'i' + str(id)
+def get_settings(request):
+    ''' Get settings from the request, or set correct defaults.
+        Must be run after process_data() so that the trial_maker_id validation works properly.
+        Argument: request
+        Returns: tuple of:
+            clicked_node (graph ID)
+            exp (string)
+            degree (float)
+            show_infos (bool)
+    '''
+    # check that data has been processed
+    if len(list(node_data_by_trial_maker.keys())) == 0:
+        raise Exception("Settings cannot be found before data is processed.")
+
+    # get clicked node id
+    clicked_node = request.args.get('clicked-node')
+
+    # find the correct 'exp' (trial maker id)
+    exp = request.args.get('trial-maker-id')
+    if exp is None or exp not in node_data_by_trial_maker.keys():
+        exp = list(node_data_by_trial_maker.keys())[0]
+
+    # find the correct 'degree'
+    degree = request.args.get('degree')
+    if degree is None:
+        degree_cookie = request.cookies.get('degree')
+        if degree_cookie is None:
+            degree = node_data_by_trial_maker[exp]["degree"].min()
+        else:
+            degree = float(degree_cookie)
+
+    # check whether show infos is on, convert to boolean
+    show_infos = request.args.get('show-infos')
+    if show_infos == "on":
+        show_infos = True
     else:
-        return 'n' + str(id)
+        if request.cookies.get('show-infos') == "on":
+            show_infos = True
+        else:
+            show_infos = False
 
-def from_graph_id(graph_id):
-    """ Convert a graph id string (id with 'n' or 'i' prepended) to an integer
-    that can be used to find the id in the Dataframes and a boolean indicating
-    whether the id was for a node or an info.
-    If passed an integer without prepended string, returns (id, None). If passed 'undefined' or None, returns ('', None)
-    Arguments: graph_id string
-    Returns: id int, is_info bool or None
-    """
-    try:
-        id = int(graph_id)
-        return (id, None)
-    except:
-        if graph_id in ['undefined', None]:
-            return ('', None)
-
-        id = int(graph_id[1:])
-        if graph_id[0] == 'i':
-            return (id, True)
-        elif graph_id[0] == 'n':
-            return (id, False)
+    return (clicked_node, exp, degree, show_infos)
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node):
     """ Adds node to networkx DiGraph.
@@ -246,7 +328,6 @@ def add_edges_to_networkx(G, degree, trial_maker_id, row):
     edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
     G.add_edges_from(edge_list)
 
-
 def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     ''' Given a degree (int or float) and a trial_maker_id in the experiment,
     whether to show infos (bool), and the id of the clicked node, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id.
@@ -290,71 +371,14 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
 
     return G
 
-def get_content(exp, id):
-    ''' Get the content of a node/info in a given trial_maker_id to display
-    in the content box.
-    '''
-    # validation
-    if exp not in node_data_by_trial_maker.keys():
-        return "An error has occurred. Content cannot be displayed."
-    if id in [None, '']:
-        return "No content to display."
-
-    # get the content
-    graph_id, is_info = from_graph_id(id)
-
-    if not is_info:
-        data = node_data_by_trial_maker[exp]
-    else:
-        data = info_data_by_trial_maker[exp]
-
-    # format content and return
-    string_data = data[data["id"] == graph_id].squeeze().to_json()
-
-    return string_data
-
-def create_label(id):
-    ''' Create a label for node/info with given id. The label goes inside
-    the node/info when the graph is rendered.
-    '''
-    # this sucks TODO
-    try:
-        label = '    %s    ' % str(int(id))
-    except ValueError:
-        label = '    %s    ' % str(id)
-
-    return label
-
+#----------------------------- Routes --------------------------------
 @app.route('/getgraph', methods=['GET'])
-def get_graph():
+def get_graph(html_only=False):
     # process data into dicts (global variables)
     process_data()
 
-    clicked_node = request.args.get('clicked-node')
-
-    # find the correct 'exp' (trial maker id)
-    exp = request.args.get('trial-maker-id')
-    if exp is None or exp not in node_data_by_trial_maker.keys():
-        exp = list(node_data_by_trial_maker.keys())[0]
-
-    # find the correct 'degree'
-    degree = request.args.get('degree')
-    if degree is None:
-        degree_cookie = request.cookies.get('degree')
-        if degree_cookie is None:
-            degree = node_data_by_trial_maker[exp]["degree"].min()
-        else:
-            degree = float(degree_cookie)
-
-    # check whether show infos is on, convert to boolean
-    show_infos = request.args.get('show-infos')
-    if show_infos == "on":
-        show_infos = True
-    else:
-        if request.cookies.get('show-infos') == "on":
-            show_infos = True
-        else:
-            show_infos = False
+    # get the settings
+    clicked_node, exp, degree, show_infos = get_settings(request)
 
     # create network
     pyvis_net = Network(directed=True)
@@ -395,8 +419,6 @@ def get_graph():
     click_script = 'network = new vis.Network(container, data, options);\
         network.on("click", function(properties) {\
             let node_id = properties.nodes[0];\
-            console.log(node_id);\
-            setTimeout(1000);\
             if (node_id != undefined) {\
                 node_form = document.getElementById("clicked-node-form");\
                 node_form_input = document.getElementById("clicked-node-input");\
@@ -420,6 +442,9 @@ def get_graph():
     for html_string in html_strings_to_remove:
         graph_html = graph_html.replace(html_string, '')
 
+    if html_only:
+        return graph_html
+
     response = make_response(graph_html)
 
     response.set_cookie('degree', str(degree))
@@ -431,85 +456,13 @@ def get_graph():
 @app.route('/', methods=['GET'])
 @app.route('/index', methods=['GET'])
 def create_visualizer():
-    # process data into dicts (global variables)
-    process_data()
+    # generate the graph HTML
+    graph_html = get_graph(html_only=True)
 
-    clicked_node = request.args.get('clicked-node')
+    # get the settings
+    clicked_node, exp, degree, show_infos = get_settings(request)
 
-    # find the correct 'exp' (trial maker id)
-    exp = request.args.get('trial-maker-id')
-    if exp is None or exp not in node_data_by_trial_maker.keys():
-        exp = list(node_data_by_trial_maker.keys())[0]
-
-    # find the correct 'degree'
-    degree = request.args.get('degree')
-    if degree is None:
-        degree_cookie = request.cookies.get('degree')
-        if degree_cookie is None:
-            degree = node_data_by_trial_maker[exp]["degree"].min()
-        else:
-            degree = float(degree_cookie)
-
-    # check whether show infos is on, convert to boolean
-    show_infos = request.args.get('show-infos')
-    if show_infos == "on":
-        show_infos = True
-    else:
-        if request.cookies.get('show-infos') == "on":
-            show_infos = True
-        else:
-            show_infos = False
-
-    # create network
-    pyvis_net = Network(directed=True)
-    nx_graph = generate_graph(degree, exp, show_infos, clicked_node)
-
-    # set up global network layout (fixed across degrees)
-    global global_pos
-    if global_pos is None:
-        # print("Setting global position")
-        global_pos = {}
-
-        # get the networkx graph-id-mapped position dict
-        pos = nx.spring_layout(nx_graph)
-
-        # convert to vertex-id-mapped position dict, with only node positions added
-        vertex_id_map = nx_graph.nodes(data='vertex_id')
-        for graph_id, xy in pos.items():
-            v_id = int(vertex_id_map[graph_id])
-            if graph_id[0] == 'n':
-                global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
-
-    # read networkx graph into pyvis, add necessary attributes
-    pyvis_net.from_nx(nx_graph)
-    for (graph_id, node) in pyvis_net.node_map.items():
-        node['title'] = str(node['label'])
-        v_id = node['vertex_id']
-        node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
-        node['y'] = global_pos[v_id]['y'] * 10
-
-        if str(graph_id) == str(clicked_node):
-            node['color'] = CLICKED_COLOR
-
-    # generate values for the template
-    graph_html = pyvis_net.generate_html()
-
-    script_to_replace = 'network = new vis.Network(container, data, options);'
-    click_script = 'network = new vis.Network(container, data, options);\
-        network.on("click", function(properties) {\
-            let node_id = properties.nodes[0];\
-            console.log(node_id);\
-            setTimeout(1000);\
-            if (node_id != undefined) {\
-                node_form = document.getElementById("clicked-node-form");\
-                node_form_input = document.getElementById("clicked-node-input");\
-                node_form_input.value = node_id;\
-                node_form.submit();\
-            }\
-        })'
-
-    graph_html = graph_html.replace(script_to_replace, click_script)
-
+    # create values to fill in for page template
     node_data = node_data_by_trial_maker[exp]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
@@ -518,7 +471,7 @@ def create_visualizer():
 
     trialmaker_options = node_data_by_trial_maker.keys()
 
-    # render template and return response
+    # render template and make response
     page_html = render_template(
         'dashboard_visualizer.html',
         graph=graph_html,
@@ -532,9 +485,9 @@ def create_visualizer():
         content=get_content(exp, clicked_node),
         show_infos_checked=("checked" if show_infos else "")
         )
-
     response = make_response(page_html)
 
+    # set cookies and return response
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
     response.set_cookie('show-infos', ("on" if show_infos else "off"))
