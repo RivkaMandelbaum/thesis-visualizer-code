@@ -33,9 +33,10 @@
       </div>
       <div class="sub-pane">
         <h3>Show Infos</h3>
-        <form action="index" method="get">
-          <input type="checkbox" id="show-infos" name="show-infos" onchange=this.form.submit() {{show_infos_checked}}>
-        </form>
+
+        <input type="checkbox" id="show-infos" name="show-infos" {{show_infos_checked}} onchange="document.getElementById('show-infos-off').value = this.checked ? 'off' : 'on';">
+
+        <input type="text" id="show-infos-off" name="show-infos-off" style="display:none">
       </div>
       <div class="sub-pane">
         <h3>Graph Seed</h3>
@@ -67,7 +68,9 @@
       <h2>Details</h2>
       <div id="element-details">
         <div id="details-content">
-          {{ content | safe}}
+          {%for para in content %}
+            {{para}}<br>
+          {% endfor %}
         </div>
         <form action="index" method="get" id="clicked-node-form" style="display:none">
           <input type="text" id="clicked-node-input" name="clicked-node" style="display:none">
@@ -89,11 +92,9 @@
 
     function getGraph() {
       let degree = encodeURIComponent($('#degree').val());
-      if (!degree) {
-        return
-      }
+      let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
 
-      let url = '/getgraph?degree=' + degree;
+      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos;
 
       if (request != null) request.abort();
 
@@ -108,8 +109,7 @@
 
     function setup() {
       $('#degree').on('input', getGraph);
-
-      getGraph();
+      $('#show-infos').on('change', getGraph);
     }
     $('document').ready(setup);
   </script>

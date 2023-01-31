@@ -69,13 +69,13 @@ def from_graph_id(graph_id):
 
 def get_content(exp, id):
     ''' Get the content of a node/info in a given trial_maker_id to display
-    in the content box.
+    in the content box. Return as array of strings. Each array element will be displayed on its own line.
     '''
     # validation
     if exp not in node_data_by_trial_maker.keys():
-        return "An error has occurred. Content cannot be displayed."
+        return ["An error has occurred. Content cannot be displayed."]
     if id in [None, '']:
-        return "No content to display."
+        return ["No content to display."]
 
     # get the content
     graph_id, is_info = from_graph_id(id)
@@ -86,9 +86,12 @@ def get_content(exp, id):
         data = info_data_by_trial_maker[exp]
 
     # format content and return
-    string_data = data[data["id"] == graph_id].squeeze().to_json()
+    dict_data = data[data["id"] == graph_id].squeeze().to_dict()
+    content_strings = []
+    for (key, val) in dict_data.items():
+        content_strings.append('%s: %s' % (key, str(val)))
 
-    return string_data
+    return content_strings
 
 def create_label(id):
     ''' Create a label for node/info with given id. The label goes inside
@@ -151,7 +154,7 @@ def process_data():
 
     processing_done = True
 
-def get_settings(request):
+def get_settings(request, from_index=False):
     ''' Get settings from the request, or set correct defaults.
         Must be run after process_data() so that the trial_maker_id validation works properly.
         Argument: request
@@ -167,6 +170,9 @@ def get_settings(request):
 
     # get clicked node id
     clicked_node = request.args.get('clicked-node')
+    if clicked_node is None:
+        clicked_node = request.cookies.get('clicked-node')
+    clicked_node = clicked_node if (clicked_node is not None) else ''
 
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
@@ -175,7 +181,7 @@ def get_settings(request):
 
     # find the correct 'degree'
     degree = request.args.get('degree')
-    if degree is None:
+    if degree in [None, '']:
         degree_cookie = request.cookies.get('degree')
         if degree_cookie is None:
             degree = node_data_by_trial_maker[exp]["degree"].min()
@@ -183,14 +189,11 @@ def get_settings(request):
             degree = float(degree_cookie)
 
     # check whether show infos is on, convert to boolean
-    show_infos = request.args.get('show-infos')
-    if show_infos == "on":
-        show_infos = True
+    if from_index:
+        show_infos = request.cookies.get('show-infos')
     else:
-        if request.cookies.get('show-infos') == "on":
-            show_infos = True
-        else:
-            show_infos = False
+        show_infos = request.args.get('show-infos')
+    show_infos = True if (show_infos == "true") else False
 
     return (clicked_node, exp, degree, show_infos)
 
@@ -373,12 +376,12 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
 
 #----------------------------- Routes --------------------------------
 @app.route('/getgraph', methods=['GET'])
-def get_graph(html_only=False):
+def get_graph(from_index=False):
     # process data into dicts (global variables)
     process_data()
 
     # get the settings
-    clicked_node, exp, degree, show_infos = get_settings(request)
+    clicked_node, exp, degree, show_infos = get_settings(request, from_index=from_index)
 
     # create network
     pyvis_net = Network(directed=True)
@@ -442,14 +445,15 @@ def get_graph(html_only=False):
     for html_string in html_strings_to_remove:
         graph_html = graph_html.replace(html_string, '')
 
-    if html_only:
+    if from_index:
         return graph_html
 
     response = make_response(graph_html)
 
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
-    response.set_cookie('show-infos', ("on" if show_infos else "off"))
+    response.set_cookie('show-infos', "true" if show_infos else "false")
+    response.set_cookie('clicked_node', clicked_node)
 
     return response
 
@@ -457,10 +461,10 @@ def get_graph(html_only=False):
 @app.route('/index', methods=['GET'])
 def create_visualizer():
     # generate the graph HTML
-    graph_html = get_graph(html_only=True)
+    graph_html = get_graph(from_index=True)
 
     # get the settings
-    clicked_node, exp, degree, show_infos = get_settings(request)
+    clicked_node, exp, degree, show_infos = get_settings(request, from_index=True)
 
     # create values to fill in for page template
     node_data = node_data_by_trial_maker[exp]
@@ -490,6 +494,7 @@ def create_visualizer():
     # set cookies and return response
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
-    response.set_cookie('show-infos', ("on" if show_infos else "off"))
+    response.set_cookie('show-infos', ("true" if show_infos else "false"))
+    response.set_cookie('clicked-node', clicked_node)
 
     return response
