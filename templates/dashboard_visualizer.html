@@ -93,10 +93,22 @@
     let request = null;
 
     function getGraph() {
+      // get name value pairs for url
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
+      // check if the node was already clicked on (no need to reload)
+      let clickedCookie = (document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('clicked-node='))
+        ?.split('=')[1]);
+
+      if (clickedNode == clickedCookie) {
+        return
+      }
+
+      // make url and send request
       let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
 
       if (request != null) request.abort();
@@ -111,6 +123,7 @@
     }
 
     function getContent() {
+      // get relevant name-value pairs for url
       let exp = (document.cookie
         .split('; ')
         .find((row) => row.startsWith('exp='))
@@ -118,6 +131,17 @@
 
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
+      // check if the node was already clicked on (no need to reload)
+      let clickedCookie = (document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('clicked-node='))
+        ?.split('=')[1]);
+
+      if (clickedNode == clickedCookie) {
+        return
+      }
+
+      // make url and send request
       let url = '/getcontent?exp=' + exp + '&clicked-node=' + clickedNode;
 
       request = $.ajax(
