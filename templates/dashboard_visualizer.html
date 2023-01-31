@@ -90,6 +90,15 @@
       $('#details-content').html(response);
     }
 
+    function setCookieRequest(clickedNode) {
+      request = $.ajax(
+          {
+            type:'GET',
+            url: '/setclickednode?id=' + clickedNode
+          }
+        )
+    }
+
     let request = null;
 
     function getGraph() {
@@ -103,12 +112,7 @@
       // info was clicked on
       let is_info = (clickedNode[0] === "i");
       if (is_info) {
-        request = $.ajax(
-          {
-            type:'GET',
-            url: '/setclickednode?id=' + clickedNode
-          }
-        )
+        setCookieRequest(clickedNode);
         return
       }
 
@@ -119,12 +123,7 @@
         ?.split('=')[1]);
 
       if (clickedNode === clickedCookie) {
-        request = $.ajax(
-          {
-            type:'GET',
-            url: '/setclickednode?id=' + clickedNode
-          }
-        )
+        setCookieRequest(clickedNode);
         return
       }
 
@@ -134,12 +133,7 @@
         if (originId != undefined) {
           let originNodeId = "n" + originId;
           if (clickedNode === originNodeId) {
-            request = $.ajax(
-            {
-              type:'GET',
-              url: '/setclickednode?id=' + clickedNode
-            }
-          )
+            setCookieRequest(clickedNode);
             return
           }
         }
@@ -175,13 +169,7 @@
         ?.split('=')[1]);
 
       if (clickedNode === clickedCookie) {
-        console.log('not reloading content, ' + clickedNode + ' and ' + clickedCookie + ' are identical')
-        request = $.ajax(
-          {
-            type:'GET',
-            url: '/setclickednode?id=' + clickedNode
-          }
-        )
+        setCookieRequest(clickedNode);
         return
       }
 
