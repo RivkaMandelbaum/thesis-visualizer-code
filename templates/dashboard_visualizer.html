@@ -90,8 +90,13 @@
       $('#details-content').html(response);
     }
 
+    let cookieRequest = null;
+
     function setCookieRequest(clickedNode) {
-      request = $.ajax(
+
+      if (cookieRequest != null ) { cookieRequest.abort(); }
+
+      cookieRequest = $.ajax(
           {
             type:'GET',
             url: '/setclickednode?id=' + clickedNode
@@ -99,7 +104,7 @@
         )
     }
 
-    let request = null;
+    let graphRequest = null;
 
     function getGraph(from_click=false) {
       // get name value pairs for url
@@ -146,9 +151,11 @@
       // make url and send request
       let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
 
-      if (request != null) request.abort();
+      if (graphRequest != null) {
+        graphRequest.abort();
+      }
 
-      request = $.ajax(
+      graphRequest = $.ajax(
         {
           type:'GET',
           url: url,
@@ -156,6 +163,8 @@
         }
       )
     }
+
+    let contentRequest = null;
 
     function getContent(from_click=false) {
       // get relevant name-value pairs for url
@@ -168,27 +177,30 @@
 
       // avoid double clicks
       if (from_click && typeof from_click != 'object') {
-      let clickedCookie = (document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('clicked-node='))
-        ?.split('=')[1]);
+        let clickedCookie = (document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('clicked-node='))
+          ?.split('=')[1]);
 
-      if (clickedNode === clickedCookie) {
-        setCookieRequest(clickedNode);
-        return
+        if (clickedNode === clickedCookie) {
+          setCookieRequest(clickedNode);
+          return
+        }
       }
-    }
+
+      if (contentRequest != null) { contentRequest.abort(); }
 
       // make url and send request
       let url = '/getcontent?exp=' + exp + '&clicked-node=' + clickedNode;
 
-      request = $.ajax(
+      contentRequest = $.ajax(
         {
           type:'GET',
           url: url,
           success: handleContentResponse
         }
       )
+
     }
 
     function setup() {

@@ -13,7 +13,8 @@ from flask import Flask, render_template, make_response, request
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
 FAILED_COLOR = 'red'
-CLICKED_COLOR = 'blue'
+CLICKED_COLOR = '#0000FF' # dark blue
+NEIGHBOR_COLOR = '#4C61FE' # midpoint between default color and dark blue
 
 DEFAULT_NODE_SHAPE = 'circle' # puts label inside node
 DEFAULT_INFO_SHAPE = 'box'
@@ -436,13 +437,12 @@ def get_graph(from_index=False):
     # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
     for (graph_id, node) in pyvis_net.node_map.items():
-        node['title'] = str(node['label'])
+        # position
         v_id = node['vertex_id']
         node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
         node['y'] = global_pos[v_id]['y'] * 10
 
-        if str(graph_id) == str(clicked_node):
-            node['color'] = CLICKED_COLOR
+        # aesthetics
 
     # generate default html with pyvis template
     graph_html = pyvis_net.generate_html()
