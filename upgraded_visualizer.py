@@ -380,8 +380,8 @@ def set_clicked_node():
     response = make_response('')
 
     clicked_node = request.args.get('id')
-    if not from_graph_id(clicked_node)[1]:
-        raise Exception("Set clicked node should only be used on infos. ")
+    if from_graph_id(clicked_node)[1] is None:
+        raise Exception("Error in graph id to set.")
 
     response.set_cookie('clicked-node', clicked_node)
 
@@ -453,11 +453,11 @@ def get_graph(from_index=False):
         network.on("click", function(properties) {\
             let node_id = properties.nodes[0];\
             if (node_id != undefined) {\
-                node_form = document.getElementById("clicked-node-form");\
                 node_form_input = document.getElementById("clicked-node-input");\
                 node_form_input.value = node_id;\
-                getGraph();\
+                \
                 getContent();\
+                getGraph();\
             }\
         })'
 

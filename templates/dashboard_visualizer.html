@@ -93,36 +93,57 @@
     let request = null;
 
     function getGraph() {
+
       // get name value pairs for url
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
-      // check if an info was clicked on (no need to reload graph)
+      // check for conditions under which graph shouldn't reload:
+      // info was clicked on
       let is_info = (clickedNode[0] === "i");
       if (is_info) {
-        let url = '/setclickednode?id=' + clickedNode;
-
         request = $.ajax(
           {
             type:'GET',
-            url: url
+            url: '/setclickednode?id=' + clickedNode
           }
         )
-
         return
       }
 
-      // check if the node was already clicked on (no need to reload)
+      // node was already clicked on
       let clickedCookie = (document.cookie
         .split('; ')
         .find((row) => row.startsWith('clicked-node='))
         ?.split('=')[1]);
 
       if (clickedNode === clickedCookie) {
+        request = $.ajax(
+          {
+            type:'GET',
+            url: '/setclickednode?id=' + clickedNode
+          }
+        )
         return
       }
 
+      // previously clicked node was an info and this is its origin
+      if (clickedCookie[0] === "i") {
+        let originId = nodes.get(clickedCookie)["origin_id"];
+        if (originId != undefined) {
+          let originNodeId = "n" + originId;
+          if (clickedNode === originNodeId) {
+            request = $.ajax(
+            {
+              type:'GET',
+              url: '/setclickednode?id=' + clickedNode
+            }
+          )
+            return
+          }
+        }
+      }
 
       // make url and send request
       let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
@@ -154,6 +175,13 @@
         ?.split('=')[1]);
 
       if (clickedNode === clickedCookie) {
+        console.log('not reloading content, ' + clickedNode + ' and ' + clickedCookie + ' are identical')
+        request = $.ajax(
+          {
+            type:'GET',
+            url: '/setclickednode?id=' + clickedNode
+          }
+        )
         return
       }
 
