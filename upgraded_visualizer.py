@@ -456,8 +456,8 @@ def get_graph(from_index=False):
                 node_form_input = document.getElementById("clicked-node-input");\
                 node_form_input.value = node_id;\
                 \
-                getContent();\
-                getGraph();\
+                getContent(from_click=true);\
+                getGraph(from_click=true);\
             }\
         })'
 

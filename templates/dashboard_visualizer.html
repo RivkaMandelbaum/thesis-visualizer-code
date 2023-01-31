@@ -101,14 +101,14 @@
 
     let request = null;
 
-    function getGraph() {
-
+    function getGraph(from_click=false) {
       // get name value pairs for url
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
-      // check for conditions under which graph shouldn't reload:
+    // when called by a click, check for conditions where shouldn't reload
+    if (from_click && typeof from_click != 'object') {
       // info was clicked on
       let is_info = (clickedNode[0] === "i");
       if (is_info) {
@@ -129,15 +129,19 @@
 
       // previously clicked node was an info and this is its origin
       if (clickedCookie[0] === "i") {
-        let originId = nodes.get(clickedCookie)["origin_id"];
-        if (originId != undefined) {
-          let originNodeId = "n" + originId;
-          if (clickedNode === originNodeId) {
-            setCookieRequest(clickedNode);
-            return
+        let nodeData = nodes.get(clickedCookie);
+        if (nodeData != null) {
+          let originId = nodeData["origin_id"];
+          if (originId != undefined) {
+            let originNodeId = "n" + originId;
+            if (clickedNode === originNodeId) {
+              setCookieRequest(clickedNode);
+              return
+            }
           }
         }
       }
+    }
 
       // make url and send request
       let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
@@ -153,7 +157,7 @@
       )
     }
 
-    function getContent() {
+    function getContent(from_click=false) {
       // get relevant name-value pairs for url
       let exp = (document.cookie
         .split('; ')
@@ -162,7 +166,8 @@
 
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
-      // check if the node was already clicked on (no need to reload)
+      // avoid double clicks
+      if (from_click && typeof from_click != 'object') {
       let clickedCookie = (document.cookie
         .split('; ')
         .find((row) => row.startsWith('clicked-node='))
@@ -172,6 +177,7 @@
         setCookieRequest(clickedNode);
         return
       }
+    }
 
       // make url and send request
       let url = '/getcontent?exp=' + exp + '&clicked-node=' + clickedNode;
