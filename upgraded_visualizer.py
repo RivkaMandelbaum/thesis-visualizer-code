@@ -375,6 +375,18 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     return G
 
 #----------------------------- Routes --------------------------------
+@app.route('/setclickednode', methods=['GET'])
+def set_clicked_node():
+    response = make_response('')
+
+    clicked_node = request.args.get('id')
+    if not from_graph_id(clicked_node)[1]:
+        raise Exception("Set clicked node should only be used on infos. ")
+
+    response.set_cookie('clicked-node', clicked_node)
+
+    return response
+
 @app.route('/getcontent', methods=['GET'])
 def get_content():
     # get arguments out of request

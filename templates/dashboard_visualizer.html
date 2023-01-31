@@ -98,15 +98,31 @@
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
+      // check if an info was clicked on (no need to reload graph)
+      let is_info = (clickedNode[0] === "i");
+      if (is_info) {
+        let url = '/setclickednode?id=' + clickedNode;
+
+        request = $.ajax(
+          {
+            type:'GET',
+            url: url
+          }
+        )
+
+        return
+      }
+
       // check if the node was already clicked on (no need to reload)
       let clickedCookie = (document.cookie
         .split('; ')
         .find((row) => row.startsWith('clicked-node='))
         ?.split('=')[1]);
 
-      if (clickedNode == clickedCookie) {
+      if (clickedNode === clickedCookie) {
         return
       }
+
 
       // make url and send request
       let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
@@ -137,7 +153,7 @@
         .find((row) => row.startsWith('clicked-node='))
         ?.split('=')[1]);
 
-      if (clickedNode == clickedCookie) {
+      if (clickedNode === clickedCookie) {
         return
       }
 
