@@ -67,7 +67,7 @@ def from_graph_id(graph_id):
         elif graph_id[0] == 'n':
             return (id, False)
 
-def get_content(exp, id):
+def get_content_list(exp, id):
     ''' Get the content of a node/info in a given trial_maker_id to display
     in the content box. Return as array of strings. Each array element will be displayed on its own line.
     '''
@@ -375,6 +375,24 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     return G
 
 #----------------------------- Routes --------------------------------
+@app.route('/getcontent', methods=['GET'])
+def get_content():
+    # get arguments out of request
+    exp = request.args.get('exp')
+    id = request.args.get('clicked-node')
+    if id is None:
+        id = request.cookies.get('clicked-node')
+
+    # get content list and convert to html
+    content_list = get_content_list(exp, id)
+    content_html = ''
+
+    for content_string in content_list:
+        content_html += content_string + '<br>'
+
+    return make_response(content_html)
+
+
 @app.route('/getgraph', methods=['GET'])
 def get_graph(from_index=False):
     # process data into dicts (global variables)
@@ -427,6 +445,7 @@ def get_graph(from_index=False):
                 node_form_input = document.getElementById("clicked-node-input");\
                 node_form_input.value = node_id;\
                 getGraph();\
+                getContent();\
             }\
         })'
 
@@ -486,7 +505,7 @@ def create_visualizer():
         physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content=get_content(exp, clicked_node),
+        content=get_content_list(exp, clicked_node),
         show_infos_checked=("checked" if show_infos else "")
         )
     response = make_response(page_html)

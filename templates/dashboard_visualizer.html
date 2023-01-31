@@ -82,8 +82,12 @@
   <script>
     'use strict';
 
-    function handleResponse(response) {
+    function handleGraphResponse(response) {
       $('#mynetwork').html(response);
+    }
+
+    function handleContentResponse(response) {
+      $('#details-content').html(response);
     }
 
     let request = null;
@@ -92,6 +96,7 @@
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
+
       let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
 
       if (request != null) request.abort();
@@ -100,7 +105,26 @@
         {
           type:'GET',
           url: url,
-          success: handleResponse
+          success: handleGraphResponse
+        }
+      )
+    }
+
+    function getContent() {
+      let exp = (document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('exp='))
+        ?.split('=')[1]);
+
+      let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
+
+      let url = '/getcontent?exp=' + exp + '&clicked-node=' + clickedNode;
+
+      request = $.ajax(
+        {
+          type:'GET',
+          url: url,
+          success: handleContentResponse
         }
       )
     }
