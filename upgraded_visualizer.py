@@ -311,15 +311,15 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
         )
         G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
 
-def add_edges_to_networkx(G, degree, trial_maker_id, row):
+def add_edges_to_networkx(G, degree, trial_maker_id, node_id):
     """ Add incoming edges of the given node to G, using dependent_vertex_ids.
     """
     node_data = node_data_by_trial_maker[trial_maker_id]
-    node_id = row["id"]
+    node_id = from_graph_id(node_id)[0]
     deg_nodes = node_data[node_data["degree"] == degree]
 
     # get dependent vertices (incoming edges) in a list
-    dependent_vertices = row["dependent_vertex_ids"].strip('][').split(',')
+    dependent_vertices = node_data[node_data["id"] == node_id]["dependent_vertex_ids"].values[0].strip('][').split(',')
 
     # find the corresponding row of deg_nodes for each vertex_id
     dependent_nodes = [deg_nodes[deg_nodes["vertex_id"] == float(v)] for v in dependent_vertices]
@@ -362,16 +362,14 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node):
     # create graph
     G = nx.DiGraph()
 
-    # add nodes from node_data to the Graph, and associated infos
+    # add nodes+edges from node_data to the Graph, and associated infos
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
         add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node)
+        add_edges_to_networkx(G, degree, trial_maker_id, node_id)
         add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos)
 
-    # add edges to the Graph: iterate over deg_nodes, add incoming edges
-    # using dependent_vertex_ids column
-    for _, ser in deg_nodes.iterrows():
-        add_edges_to_networkx(G, degree, trial_maker_id, ser)
+
 
     return G
 
