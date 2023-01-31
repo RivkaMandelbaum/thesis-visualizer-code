@@ -93,8 +93,8 @@
     function getGraph() {
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
-
-      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos;
+      let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
+      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode;
 
       if (request != null) request.abort();
 

@@ -426,7 +426,7 @@ def get_graph(from_index=False):
                 node_form = document.getElementById("clicked-node-form");\
                 node_form_input = document.getElementById("clicked-node-input");\
                 node_form_input.value = node_id;\
-                node_form.submit();\
+                getGraph();\
             }\
         })'
 
@@ -453,7 +453,7 @@ def get_graph(from_index=False):
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
     response.set_cookie('show-infos', "true" if show_infos else "false")
-    response.set_cookie('clicked_node', clicked_node)
+    response.set_cookie('clicked-node', clicked_node)
 
     return response
 
