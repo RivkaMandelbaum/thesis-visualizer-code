@@ -34,9 +34,7 @@
       <div class="sub-pane">
         <h3>Show Infos</h3>
 
-        <input type="checkbox" id="show-infos" name="show-infos" {{show_infos_checked}} onchange="document.getElementById('show-infos-off').value = this.checked ? 'off' : 'on';">
-
-        <input type="text" id="show-infos-off" name="show-infos-off" style="display:none">
+        <input type="checkbox" id="show-infos" name="show-infos" {{show_infos_checked}}>
       </div>
       <div class="sub-pane">
         <h3>Graph Seed</h3>
@@ -53,9 +51,7 @@
       <div class="sub-pane">
         <h3>Hide Non-Neighbors</h3>
 
-        <input type="checkbox" id="hide-non-neighbors" name="hide-non-neighbors" {{hide_non_neighbors_checked}} onchange="document.getElementById('hide-non-neighbors-off').value = this.checked ? 'off' : 'on';">
-
-        <input type="text" id="hide-non-neighbors-off" name="hide-non-neighbors-off" style="display:none">
+        <input type="checkbox" id="hide-non-neighbors" name="hide-non-neighbors" {{hide_non_neighbors_checked}}>
       </div>
     </div>
     <div id="search-pane" class="sidebar-pane">
@@ -109,6 +105,11 @@
 
     let graphRequest = null;
 
+    function resetNeighborsGetGraph() {
+      $('#hide-non-neighbors').prop('checked', false);
+      getGraph();
+    }
+
     function getGraph(from_click=false) {
       // get name value pairs for url
       let degree = encodeURIComponent($('#degree').val());
@@ -116,43 +117,43 @@
       let hideNonNeighbors = encodeURIComponent($('#hide-non-neighbors').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
-    // when called by a click, check for conditions where shouldn't reload
-    if (from_click && typeof from_click != 'object') {
-      // info was clicked on
-      let is_info = (clickedNode[0] === "i");
-      if (is_info) {
-        console.log("Info: not reloading graph");
-        setCookieRequest(clickedNode);
-        return
-      }
+      // when called by a click, check for conditions where shouldn't reload
+      if (from_click && typeof from_click != 'object') {
+        // info was clicked on
+        let is_info = (clickedNode[0] === "i");
+        if (is_info) {
+          console.log("Info: not reloading graph");
+          setCookieRequest(clickedNode);
+          return
+        }
 
-      // node was already clicked on
-      let clickedCookie = (document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('clicked-node='))
-        ?.split('=')[1]);
+        // node was already clicked on
+        let clickedCookie = (document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('clicked-node='))
+          ?.split('=')[1]);
 
-      if (clickedNode === clickedCookie) {
-        console.log("Double click: not reloading graph");
-        setCookieRequest(clickedNode);
-        return
-      }
+        if (clickedNode === clickedCookie) {
+          console.log("Double click: not reloading graph");
+          setCookieRequest(clickedNode);
+          return
+        }
 
-      // previously clicked node was an info and this is its origin
-      if (clickedCookie[0] === "i") {
-        let nodeData = nodes.get(clickedCookie);
-        if (nodeData != null) {
-          let originId = nodeData["origin_id"];
-          if (originId != undefined) {
-            let originNodeId = "n" + originId;
-            if (clickedNode === originNodeId) {
-              console.log("Info's origin: not reloading graph");
-              setCookieRequest(clickedNode);
-              return
+        // previously clicked node was an info and this is its origin
+        if (clickedCookie[0] === "i") {
+          let nodeData = nodes.get(clickedCookie);
+          if (nodeData != null) {
+            let originId = nodeData["origin_id"];
+            if (originId != undefined) {
+              let originNodeId = "n" + originId;
+              if (clickedNode === originNodeId) {
+                console.log("Info's origin: not reloading graph");
+                setCookieRequest(clickedNode);
+                return
+              }
             }
           }
         }
-      }
     }
 
       // make url and send request
@@ -211,7 +212,8 @@
     }
 
     function setup() {
-      $('#degree').on('input', getGraph);
+      $('#degree').on('input', resetNeighborsGetGraph);
+      $('#trial-maker-id').on('change', resetNeighborsGetGraph);
       $('#show-infos').on('change', getGraph);
       $('#hide-non-neighbors').on('change', getGraph);
     }
