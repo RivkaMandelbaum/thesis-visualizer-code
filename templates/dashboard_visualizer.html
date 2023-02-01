@@ -117,6 +117,7 @@
       // info was clicked on
       let is_info = (clickedNode[0] === "i");
       if (is_info) {
+        console.log("Info: not reloading graph");
         setCookieRequest(clickedNode);
         return
       }
@@ -128,6 +129,7 @@
         ?.split('=')[1]);
 
       if (clickedNode === clickedCookie) {
+        console.log("Double click: not reloading graph");
         setCookieRequest(clickedNode);
         return
       }
@@ -140,6 +142,7 @@
           if (originId != undefined) {
             let originNodeId = "n" + originId;
             if (clickedNode === originNodeId) {
+              console.log("Info's origin: not reloading graph");
               setCookieRequest(clickedNode);
               return
             }

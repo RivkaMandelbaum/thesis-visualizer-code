@@ -224,12 +224,23 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node):
     # extract vertex id
     vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
 
-    # set node color (clicked/failed)
+    # set node color (clicked/neighbor/failed)
     node_color = DEFAULT_COLOR
+    # check if node was clicked on
     if to_graph_id(node_id, False) == clicked_node: # node was clicked on
-            node_color = CLICKED_COLOR
+        node_color = CLICKED_COLOR
+    # check if node's child info was clicked on
     elif clicked_is_info and info_data[info_data["id"] == clicked_graph_id]["origin_id"].values[0] == node_id: # node's info was clicked on
         node_color = CLICKED_COLOR
+    # check if neighbor was clicked
+    else:
+        incoming_neighbors = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+
+        clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
+
+        if clicked_vertex in incoming_neighbors:
+            node_color = NEIGHBOR_COLOR
+
     # color failed nodes (overwrites clicked coloring if relevant)
     if (node_data[node_data["id"] == node_id]["failed"].values[0] == "t"):
         node_color = FAILED_COLOR
@@ -285,6 +296,8 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
 
         info_is_hidden = True
         if show_infos:
+            # this info was clicked on; this info's parent was clicked on;
+            # or a neighbor of this info's parent was clicked on
             if to_graph_id(node_id, False) == clicked_node or \
                 to_graph_id(info_id, True) == clicked_node or \
                 clicked_node in G.pred[to_graph_id(node_id, False)]: info_is_hidden = False
@@ -295,6 +308,8 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
             info_color = CLICKED_COLOR
         elif to_graph_id(info_id, True) == clicked_node: # info was clicked on
             info_color = CLICKED_COLOR
+        elif clicked_node in G.pred[to_graph_id(node_id, False)]:
+            info_color = NEIGHBOR_COLOR
         # color failed nodes (overwrites clicked coloring if relevant)
         if (info_data[info_data["id"] == info_id]["failed"].values[0] == "t"):
             info_color = FAILED_COLOR
@@ -443,8 +458,6 @@ def get_graph(from_index=False):
         v_id = node['vertex_id']
         node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
         node['y'] = global_pos[v_id]['y'] * 10
-
-        # aesthetics
 
     # generate default html with pyvis template
     graph_html = pyvis_net.generate_html()
