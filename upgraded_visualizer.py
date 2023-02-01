@@ -59,7 +59,7 @@ def from_graph_id(graph_id):
         id = int(graph_id)
         return (id, None)
     except:
-        if graph_id in ['undefined', None]:
+        if graph_id in ['undefined', None, '']:
             return ('', None)
 
         id = int(graph_id[1:])
@@ -233,25 +233,24 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_
     # extract vertex id
     vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
 
-    # set node color for clicked nodes
+    # set node color and hidden status for clicked/neighbor nodes
     node_color = DEFAULT_COLOR
+    node_is_hidden = True if hide_non_neighbors else False
     # check if node was clicked on
     if to_graph_id(node_id, False) == clicked_node: # node was clicked on
         node_color = CLICKED_COLOR
+        node_is_hidden = False
     # check if node's child info was clicked on
     elif clicked_is_info and info_data[info_data["id"] == clicked_graph_id]["origin_id"].values[0] == node_id: # node's info was clicked on
         node_color = CLICKED_COLOR
-
-    # set node color and hidden status for neighbor nodes
-    node_is_hidden = True if hide_non_neighbors else False
+        node_is_hidden = False
 
     incoming_neighbors = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
     clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
 
     if clicked_vertex in incoming_neighbors:
         node_color = NEIGHBOR_COLOR
-        if hide_non_neighbors:
-            node_is_hidden = False
+        node_is_hidden = False
 
     # color failed nodes (overwrites clicked coloring if relevant)
     if (node_data[node_data["id"] == node_id]["failed"].values[0] == "t"):
@@ -270,7 +269,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_
         hidden=node_is_hidden
         )
 
-def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos):
+def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, hide_non_neighbors):
     """ Adds infos associated with given node_id to networkx DiGraph, and edges.
         Arguments:
             G: networkx DiGraph
@@ -279,6 +278,7 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
             node_id: int
             clicked_node: string (in graph_id format)
             show_infos: bool
+            hide_non_neighbors: bool
         Info attributes:
             graph_id    ('i' + 'id' field)
             color
