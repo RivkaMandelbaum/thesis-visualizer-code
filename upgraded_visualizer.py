@@ -74,7 +74,7 @@ def get_content_list(exp, id):
     '''
     # validation
     if exp not in node_data_by_trial_maker.keys():
-        return ["An error has occurred. Content cannot be displayed."]
+        return ["An error has occurred. Content of experiment %s cannot be displayed." % exp]
     if id in [None, '']:
         return ["No content to display."]
 
@@ -283,7 +283,11 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
 
         is_info=True
 
-        info_is_hidden = not (show_infos and ((to_graph_id(node_id, False) == clicked_node) or (to_graph_id(info_id, True) == clicked_node)))
+        info_is_hidden = True
+        if show_infos:
+            if to_graph_id(node_id, False) == clicked_node or \
+                to_graph_id(info_id, True) == clicked_node or \
+                clicked_node in G.pred[to_graph_id(node_id, False)]: info_is_hidden = False
 
         # set node color (clicked/failed)
         info_color = DEFAULT_COLOR
