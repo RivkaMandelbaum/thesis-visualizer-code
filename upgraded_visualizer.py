@@ -74,7 +74,7 @@ def get_content_list(exp, id):
     '''
     # validation
     if exp not in node_data_by_trial_maker.keys():
-        return ["An error has occurred. Content of experiment %s cannot be displayed." % exp]
+        return ["An error has occurred. Try reloading the page."]
     if id in [None, '']:
         return ["No content to display."]
 
@@ -469,6 +469,10 @@ def get_graph(from_index=False):
         v_id = node['vertex_id']
         node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
         node['y'] = global_pos[v_id]['y'] * 10
+
+        # overwrite incorrect neighbor color (leftover from prev degree)
+        if node['color'] == NEIGHBOR_COLOR and clicked_node not in nx_graph.nodes:
+            node['color'] = DEFAULT_COLOR
 
     # generate default html with pyvis template
     graph_html = pyvis_net.generate_html()
