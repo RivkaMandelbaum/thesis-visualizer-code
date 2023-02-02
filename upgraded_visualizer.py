@@ -209,16 +209,12 @@ def get_settings(request, from_index=False):
     show_outgoing = False
 
     show_option = request.args.get("show-option")
+    if not show_option:
+        show_option = request.cookies.get('show-option')
     if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_INCOMING]:
         show_incoming = True
     if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_OUTGOING]:
         show_outgoing = True
-
-    # if from_index:
-    #     show_outgoing = request.cookies.get('show-outgoing')
-    # else:
-    #     show_outgoing = request.args.get('show-outgoing')
-    # show_outgoing = True if (show_outgoing == "true") else False
 
     return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming)
 
@@ -546,10 +542,18 @@ def get_graph(from_index=False):
 
     response = make_response(graph_html)
 
+    show_option_cookie = "all"
+    if show_outgoing and show_incoming:
+        show_option_cookie = "connected"
+    elif show_outgoing:
+        show_option_cookie = "outgoing"
+    elif show_incoming:
+        show_option_cookie = "incoming"
+
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
     response.set_cookie('show-infos', "true" if show_infos else "false")
-    response.set_cookie('show-outgoing', ("true" if show_outgoing else "false"))
+    response.set_cookie('show-option', show_option_cookie)
     response.set_cookie('clicked-node', clicked_node)
 
     return response
@@ -597,11 +601,19 @@ def create_visualizer():
         )
     response = make_response(page_html)
 
+    show_option_cookie = "all"
+    if show_outgoing and show_incoming:
+        show_option_cookie = "connected"
+    elif show_outgoing:
+        show_option_cookie = "outgoing"
+    elif show_incoming:
+        show_option_cookie = "incoming"
+
     # set cookies and return response
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
     response.set_cookie('show-infos', ("true" if show_infos else "false"))
-    response.set_cookie('show-outgoing', ("true" if show_outgoing else "false"))
+    response.set_cookie('show-option', show_option_cookie)
     response.set_cookie('clicked-node', clicked_node)
 
     return response

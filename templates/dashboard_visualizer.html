@@ -145,7 +145,7 @@
       getGraph(false, validRadioValue);
     }
 
-    function getGraph(from_click=false, radioEvent="all") {
+    function getGraph(from_click=false, radioEvent="") {
       // get name value pairs for url
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
       let degree = encodeURIComponent($('#degree').val());
