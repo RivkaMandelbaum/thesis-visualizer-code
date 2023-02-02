@@ -120,14 +120,14 @@
       // clicked node was from a previous degree or trial maker id
       // or a node has not yet been clicked on
       if (nodes.get(clickedNode) == null) {
-        console.log(`clickedNode ${clickedNode} not in this degree`);
         $('#clicked-node-input').prop('value', '');
         $('#show-radio-outgoing').prop('disabled', true);
         $('#show-radio-incoming').prop('disabled', true);
         $('#show-radio-connected').prop('disabled', true);
         $('#show-radio-all').prop('checked', true);
+
+        getContent();
       } else {
-        console.log('clickedNode found');
         $('#show-radio-outgoing').prop('disabled', false);
         $('#show-radio-incoming').prop('disabled', false);
         $('#show-radio-connected').prop('disabled', false);
@@ -221,7 +221,13 @@
         .find((row) => row.startsWith('exp='))
         ?.split('=')[1]);
 
-      let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
+      let clickedNode = document.getElementById("clicked-node-input").value;
+
+      if (nodes.get(clickedNode) == null) {
+        clickedNode = '';
+      }
+
+      clickedNode = encodeURIComponent(clickedNode);
 
       // avoid double clicks
       if (from_click && typeof from_click != 'object') {
@@ -253,7 +259,7 @@
 
     function setup() {
       validateRadio();
-      $('#degree').on('input', event => { validateRadioGetGraph(event) });
+      $('#degree').on('input', event => { validateRadioGetGraph(event)});
       $('#trial-maker-id').on('change', event => { validateRadioGetGraph(event) });
       $('#show-infos').on('change', getGraph);
       // $('#clicked-node-input').on('input', validateRadio);
