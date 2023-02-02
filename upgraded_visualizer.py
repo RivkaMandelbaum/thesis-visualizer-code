@@ -198,14 +198,14 @@ def get_settings(request, from_index=False):
 
     # check whether hide non neighbors is on, convert to boolean
     if from_index:
-        hide_non_neighbors = request.cookies.get('hide-non-neighbors')
+        show_outgoing = request.cookies.get('show-outgoing')
     else:
-        hide_non_neighbors = request.args.get('hide-non-neighbors')
-    hide_non_neighbors = True if (hide_non_neighbors == "true") else False
+        show_outgoing = request.args.get('show-outgoing')
+    show_outgoing = True if (show_outgoing == "true") else False
 
-    return (clicked_node, exp, degree, show_infos, hide_non_neighbors)
+    return (clicked_node, exp, degree, show_infos, show_outgoing)
 
-def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_non_neighbors):
+def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing):
     """ Adds node to networkx DiGraph.
         Arguments:
             G: networkx DiGraph
@@ -213,7 +213,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_
             trial_maker_id: string
             node_id: int
             clicked_node: string (in graph_id format)
-            hide_non_neighbors: bool
+            show_outgoing: bool
         Node attributes:
             graph_id    ('n' + 'id' field)
             color
@@ -235,7 +235,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_
 
     # set node color and hidden status for clicked/neighbor nodes
     node_color = DEFAULT_COLOR
-    node_is_hidden = True if hide_non_neighbors else False
+    node_is_hidden = True if show_outgoing else False
     # check if node was clicked on
     if to_graph_id(node_id, False) == clicked_node: # node was clicked on
         node_color = CLICKED_COLOR
@@ -269,7 +269,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_
         hidden=node_is_hidden
         )
 
-def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, hide_non_neighbors):
+def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, show_outgoing):
     """ Adds infos associated with given node_id to networkx DiGraph, and edges.
         Arguments:
             G: networkx DiGraph
@@ -278,7 +278,7 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
             node_id: int
             clicked_node: string (in graph_id format)
             show_infos: bool
-            hide_non_neighbors: bool
+            show_outgoing: bool
         Info attributes:
             graph_id    ('i' + 'id' field)
             color
@@ -364,7 +364,7 @@ def add_edges_to_networkx(G, degree, trial_maker_id, node_id):
     edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
     G.add_edges_from(edge_list)
 
-def generate_graph(degree, trial_maker_id, show_infos, clicked_node, hide_non_neighbors):
+def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoing):
     ''' Given a degree (int or float) and a trial_maker_id in the experiment,
     whether to show infos (bool), whether to hide non-neighbors (bool) and the id of the clicked node, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id. Some nodes or infos will have the "hidden" attribute set to True depending on the settings, but all of them will be in the DiGraph.
     '''
@@ -397,9 +397,9 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node, hide_non_ne
     # add nodes+edges from node_data to the Graph, and associated infos
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
-        add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, hide_non_neighbors)
+        add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing)
         add_edges_to_networkx(G, degree, trial_maker_id, node_id)
-        add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, hide_non_neighbors)
+        add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, show_outgoing)
 
     return G
 
@@ -440,11 +440,11 @@ def get_graph(from_index=False):
     process_data()
 
     # get the settings
-    clicked_node, exp, degree, show_infos, hide_non_neighbors = get_settings(request, from_index=from_index)
+    clicked_node, exp, degree, show_infos, show_outgoing = get_settings(request, from_index=from_index)
 
     # create network
     pyvis_net = Network(directed=True)
-    nx_graph = generate_graph(degree, exp, show_infos, clicked_node, hide_non_neighbors)
+    nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing)
 
     # set up global network layout (fixed across degrees)
     global global_pos
@@ -514,7 +514,7 @@ def get_graph(from_index=False):
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
     response.set_cookie('show-infos', "true" if show_infos else "false")
-    response.set_cookie('hide-non-neighbors', ("true" if hide_non_neighbors else "false"))
+    response.set_cookie('show-outgoing', ("true" if show_outgoing else "false"))
     response.set_cookie('clicked-node', clicked_node)
 
     return response
@@ -526,7 +526,7 @@ def create_visualizer():
     graph_html = get_graph(from_index=True)
 
     # get the settings
-    clicked_node, exp, degree, show_infos, hide_non_neighbors = get_settings(request, from_index=True)
+    clicked_node, exp, degree, show_infos, show_outgoing = get_settings(request, from_index=True)
 
     # create values to fill in for page template
     node_data = node_data_by_trial_maker[exp]
@@ -550,7 +550,7 @@ def create_visualizer():
         find_max=max_vertex_id,
         content=get_content_list(exp, clicked_node),
         show_infos_checked=("checked" if show_infos else ""),
-        hide_non_neighbors_checked = ("checked" if hide_non_neighbors else ""),
+        show_outgoing_checked = ("checked" if show_outgoing else ""),
         )
     response = make_response(page_html)
 
@@ -558,7 +558,7 @@ def create_visualizer():
     response.set_cookie('degree', str(degree))
     response.set_cookie('exp', exp)
     response.set_cookie('show-infos', ("true" if show_infos else "false"))
-    response.set_cookie('hide-non-neighbors', ("true" if hide_non_neighbors else "false"))
+    response.set_cookie('show-outgoing', ("true" if show_outgoing else "false"))
     response.set_cookie('clicked-node', clicked_node)
 
     return response

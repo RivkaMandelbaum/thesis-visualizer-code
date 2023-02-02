@@ -51,7 +51,7 @@
       <div class="sub-pane">
         <h3>Hide Non-Neighbors</h3>
 
-        <input type="checkbox" id="hide-non-neighbors" name="hide-non-neighbors" {{hide_non_neighbors_checked}}>
+        <input type="checkbox" id="show-outgoing" name="show-outgoing" {{show_outgoing_checked}}>
       </div>
     </div>
     <div id="search-pane" class="sidebar-pane">
@@ -106,7 +106,7 @@
     let graphRequest = null;
 
     function resetNeighborsGetGraph() {
-      $('#hide-non-neighbors').prop('checked', false);
+      $('#show-outgoing').prop('checked', false);
       getGraph();
     }
 
@@ -114,7 +114,7 @@
       // get name value pairs for url
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
-      let hideNonNeighbors = encodeURIComponent($('#hide-non-neighbors').is(":checked"));
+      let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
       // when called by a click, check for conditions where shouldn't reload
@@ -157,7 +157,7 @@
     }
 
       // make url and send request
-      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&hide-non-neighbors=' + hideNonNeighbors;
+      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-outgoing=' + hideNonNeighbors;
 
       if (graphRequest != null) {
         graphRequest.abort();
@@ -215,7 +215,7 @@
       $('#degree').on('input', resetNeighborsGetGraph);
       $('#trial-maker-id').on('change', resetNeighborsGetGraph);
       $('#show-infos').on('change', getGraph);
-      $('#hide-non-neighbors').on('change', getGraph);
+      $('#show-outgoing').on('change', getGraph);
     }
     $('document').ready(setup);
   </script>
