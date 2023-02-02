@@ -19,6 +19,12 @@ NEIGHBOR_COLOR = '#4C61FE' # midpoint between default color and dark blue
 DEFAULT_NODE_SHAPE = 'circle' # puts label inside node
 DEFAULT_INFO_SHAPE = 'box'
 
+# constants for the 'show X node only' settings
+SHOW_NODES_ALL = 'all'
+SHOW_NODES_INCOMING = 'incoming'
+SHOW_NODES_OUTGOING = 'outgoing'
+SHOW_NODES_CONNECTED = 'connected'
+
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 #-----------------------------------------------------------------------
@@ -164,6 +170,8 @@ def get_settings(request, from_index=False):
             exp (string)
             degree (float)
             show_infos (bool)
+            show_outgoing (bool)
+            show_incoming (bool)
     '''
     # check that data has been processed
     if len(list(node_data_by_trial_maker.keys())) == 0:
@@ -203,9 +211,9 @@ def get_settings(request, from_index=False):
         show_outgoing = request.args.get('show-outgoing')
     show_outgoing = True if (show_outgoing == "true") else False
 
-    return (clicked_node, exp, degree, show_infos, show_outgoing)
+    return (clicked_node, exp, degree, show_infos, show_outgoing, False)
 
-def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing):
+def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
         Arguments:
             G: networkx DiGraph
@@ -214,6 +222,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
             node_id: int
             clicked_node: string (in graph_id format)
             show_outgoing: bool
+            show_incoming: bool
         Node attributes:
             graph_id    ('n' + 'id' field)
             color
@@ -235,7 +244,8 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
 
     # set node color and hidden status for clicked/neighbor nodes
     node_color = DEFAULT_COLOR
-    node_is_hidden = True if show_outgoing else False
+    node_is_hidden = True if (show_outgoing or show_incoming) else False
+
     # check if node was clicked on
     if to_graph_id(node_id, False) == clicked_node: # node was clicked on
         node_color = CLICKED_COLOR
@@ -244,13 +254,24 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
     elif clicked_is_info and info_data[info_data["id"] == clicked_graph_id]["origin_id"].values[0] == node_id: # node's info was clicked on
         node_color = CLICKED_COLOR
         node_is_hidden = False
+    # check if node's neighbor was clicked on
+    else:
+        if show_outgoing:
+            incoming_to_curr = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+            clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
 
-    incoming_neighbors = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
-    clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
+            if clicked_vertex in incoming_to_curr:
+                # note: when switching degrees, this will get overwritten
+                # later in the code
+                node_color = NEIGHBOR_COLOR
+                node_is_hidden = False
 
-    if clicked_vertex in incoming_neighbors:
-        node_color = NEIGHBOR_COLOR
-        node_is_hidden = False
+        if show_incoming:   # not else: both can be true
+            incoming_to_clicked = node_data[node_data["id"] == clicked_graph_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+
+            if str(to_graph_id(node_id, False)) in incoming_to_clicked:
+                node_color = NEIGHBOR_COLOR
+                node_is_hidden = False
 
     # color failed nodes (overwrites clicked coloring if relevant)
     if (node_data[node_data["id"] == node_id]["failed"].values[0] == "t"):
@@ -269,7 +290,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
         hidden=node_is_hidden
         )
 
-def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, show_outgoing):
+def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos):
     """ Adds infos associated with given node_id to networkx DiGraph, and edges.
         Arguments:
             G: networkx DiGraph
@@ -307,8 +328,9 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
 
         is_info=True
 
+        # set info visibility (hidden by default)
         info_is_hidden = True
-        if show_infos:
+        if show_infos and not G.nodes[node_id]["hidden"]:
             # this info was clicked on; this info's parent was clicked on;
             # or a neighbor of this info's parent was clicked on
             if to_graph_id(node_id, False) == clicked_node or \
@@ -364,9 +386,14 @@ def add_edges_to_networkx(G, degree, trial_maker_id, node_id):
     edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
     G.add_edges_from(edge_list)
 
-def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoing):
+def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoing, show_incoming):
     ''' Given a degree (int or float) and a trial_maker_id in the experiment,
-    whether to show infos (bool), whether to hide non-neighbors (bool) and the id of the clicked node, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id. Some nodes or infos will have the "hidden" attribute set to True depending on the settings, but all of them will be in the DiGraph.
+    whether to show infos (bool), whether to hide some nodes, and the id of the clicked node, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id. Some nodes or infos will have the "hidden" attribute set to True depending on the settings, but all of them will be in the DiGraph.
+
+    show_outgoing: shows only nodes with outgoing edges from the clicked node
+    show_incoming: shows only nodes with incoming edges from clicked node
+    if both are true, then all nodes connected to the clicked node are shown
+    if both are false, all nodes are shown
     '''
     # validation: ensure degree is a float
     if not isinstance(degree, float):
@@ -397,9 +424,9 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoi
     # add nodes+edges from node_data to the Graph, and associated infos
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
-        add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing)
+        add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming)
         add_edges_to_networkx(G, degree, trial_maker_id, node_id)
-        add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos, show_outgoing)
+        add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos)
 
     return G
 
@@ -440,11 +467,11 @@ def get_graph(from_index=False):
     process_data()
 
     # get the settings
-    clicked_node, exp, degree, show_infos, show_outgoing = get_settings(request, from_index=from_index)
+    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming = get_settings(request, from_index=from_index)
 
     # create network
     pyvis_net = Network(directed=True)
-    nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing)
+    nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
 
     # set up global network layout (fixed across degrees)
     global global_pos
@@ -526,7 +553,7 @@ def create_visualizer():
     graph_html = get_graph(from_index=True)
 
     # get the settings
-    clicked_node, exp, degree, show_infos, show_outgoing = get_settings(request, from_index=True)
+    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming = get_settings(request, from_index=True)
 
     # create values to fill in for page template
     node_data = node_data_by_trial_maker[exp]
@@ -536,6 +563,14 @@ def create_visualizer():
     max_vertex_id = node_data["vertex_id"].max()
 
     trialmaker_options = node_data_by_trial_maker.keys()
+
+    show_nodes_val = SHOW_NODES_ALL
+    if show_outgoing and show_incoming:
+        show_nodes_val = SHOW_NODES_CONNECTED
+    elif show_outgoing:
+        show_nodes_val = SHOW_NODES_OUTGOING
+    elif show_incoming:
+        show_nodes_val = SHOW_NODES_INCOMING
 
     # render template and make response
     page_html = render_template(
@@ -550,7 +585,7 @@ def create_visualizer():
         find_max=max_vertex_id,
         content=get_content_list(exp, clicked_node),
         show_infos_checked=("checked" if show_infos else ""),
-        show_outgoing_checked = ("checked" if show_outgoing else ""),
+        show_nodes_option = show_nodes_val,
         )
     response = make_response(page_html)
 
