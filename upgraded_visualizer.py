@@ -276,14 +276,11 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
                 node_is_hidden = False
 
         if show_incoming:   # not else: both can be true
-            try:
-                incoming_to_clicked = node_data[node_data["id"] == clicked_graph_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+            incoming_to_clicked = node_data[node_data["id"] == clicked_graph_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
 
-                if str(to_graph_id(node_id, False)) in incoming_to_clicked:
-                    node_color = NEIGHBOR_COLOR
-                    node_is_hidden = False
-            except:
-                print('Failed to process incoming nodes with clicked_graph_id ' + clicked_graph_id)
+            if str(int(vert_id)) in incoming_to_clicked:
+                node_color = NEIGHBOR_COLOR
+                node_is_hidden = False
 
     # color failed nodes (overwrites clicked coloring if relevant)
     if (node_data[node_data["id"] == node_id]["failed"].values[0] == "t"):
