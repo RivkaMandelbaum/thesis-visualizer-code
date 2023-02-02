@@ -90,6 +90,7 @@
 
     function handleGraphResponse(response) {
       $('#mynetwork').html(response);
+      validateRadio();
     }
 
     function handleContentResponse(response) {
@@ -112,20 +113,47 @@
 
     let graphRequest = null;
 
-    function resetNeighborsGetGraph() {
-      $('#show-outgoing').prop('checked', false);
-      getGraph();
+    function validateRadio() {
+      let clickedNode = document.getElementById("clicked-node-input").value;
+      let radioValid = false;
+
+      // clicked node was from a previous degree or trial maker id
+      // or a node has not yet been clicked on
+      if (nodes.get(clickedNode) == null) {
+        console.log(`clickedNode ${clickedNode} not in this degree`);
+        $('#clicked-node-input').prop('value', '');
+        $('#show-radio-outgoing').prop('disabled', true);
+        $('#show-radio-incoming').prop('disabled', true);
+        $('#show-radio-connected').prop('disabled', true);
+        $('#show-radio-all').prop('checked', true);
+      } else {
+        console.log('clickedNode found');
+        $('#show-radio-outgoing').prop('disabled', false);
+        $('#show-radio-incoming').prop('disabled', false);
+        $('#show-radio-connected').prop('disabled', false);
+        radioValid = true;
+      }
+
+      return radioValid;
+    }
+
+    function validateRadioGetGraph(event) {
+      let validRadioValue = $('#show-radio-all').val();
+      if (validateRadio()) {
+        validRadioValue = event;
+      }
+      getGraph(false, validRadioValue);
     }
 
     function getGraph(from_click=false, radioEvent="all") {
       // get name value pairs for url
+      let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
-      let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
       let showOption = encodeURIComponent(radioEvent);
-      if (typeof radioEvent != 'string') {
+      if (typeof radioEvent != 'string'){ // use radio button if valid
         showOption = encodeURIComponent(radioEvent.target.value);
       }
 
@@ -224,12 +252,12 @@
     }
 
     function setup() {
-      $('#degree').on('input', resetNeighborsGetGraph);
-      $('#trial-maker-id').on('change', resetNeighborsGetGraph);
+      validateRadio();
+      $('#degree').on('input', event => { validateRadioGetGraph(event) });
+      $('#trial-maker-id').on('change', event => { validateRadioGetGraph(event) });
       $('#show-infos').on('change', getGraph);
-      $('#show-outgoing').on('change', getGraph);
-
-      $('#show-radio-container').on('change', event => { getGraph(false, event); });
+      // $('#clicked-node-input').on('input', validateRadio);
+      $('#show-radio-container').on('change', event => { validateRadioGetGraph(event) });
     }
     $('document').ready(setup);
   </script>
