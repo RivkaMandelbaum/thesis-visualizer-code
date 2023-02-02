@@ -124,8 +124,9 @@
       let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
+      let showOption = encodeURIComponent(radioEvent);
       if (typeof radioEvent != 'string') {
-        radioEvent = encodeURIComponent(radioEvent.target.value);
+        showOption = encodeURIComponent(radioEvent.target.value);
       }
 
       // when called by a click, check for conditions where shouldn't reload
@@ -168,7 +169,7 @@
     }
 
       // make url and send request
-      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-outgoing=' + hideNonNeighbors;
+      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-option=' + showOption;
 
       if (graphRequest != null) {
         graphRequest.abort();

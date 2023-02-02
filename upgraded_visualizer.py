@@ -204,14 +204,23 @@ def get_settings(request, from_index=False):
         show_infos = request.args.get('show-infos')
     show_infos = True if (show_infos == "true") else False
 
-    # check whether hide non neighbors is on, convert to boolean
-    if from_index:
-        show_outgoing = request.cookies.get('show-outgoing')
-    else:
-        show_outgoing = request.args.get('show-outgoing')
-    show_outgoing = True if (show_outgoing == "true") else False
+    # check whether show_incoming and show_outgoing should be on
+    show_incoming = False
+    show_outgoing = False
 
-    return (clicked_node, exp, degree, show_infos, show_outgoing, False)
+    show_option = request.args.get("show-option")
+    if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_INCOMING]:
+        show_incoming = True
+    if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_OUTGOING]:
+        show_outgoing = True
+
+    # if from_index:
+    #     show_outgoing = request.cookies.get('show-outgoing')
+    # else:
+    #     show_outgoing = request.args.get('show-outgoing')
+    # show_outgoing = True if (show_outgoing == "true") else False
+
+    return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming)
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
