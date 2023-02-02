@@ -49,10 +49,17 @@
         </select>
       </div>
       <div class="sub-pane">
-        <h3>Hide Non-Neighbors</h3>
+        <h3>Show:</h3>
+        <div id="show-radio-container">
+          <input type="radio" name="show-radio" id="show-radio-incoming" value="incoming"{% if "incoming" == show_nodes_option %}checked{% endif %}> <label for="show-radio-incoming">Incoming nodes only</label><br>
 
-        <input type="checkbox" id="show-outgoing" name="show-outgoing" {{show_outgoing_checked}}>
-      </div>
+          <input type="radio" name="show-radio" id="show-radio-outgoing" value="outgoing"{% if "outgoing" == show_nodes_option %}checked{% endif %}> <label for="show-radio-outgoing">Outgoing nodes only</label><br>
+
+          <input type="radio" name="show-radio" id="show-radio-connected" value="connected"{% if "connected" == show_nodes_option %}checked{% endif %}> <label for="show-radio-connected">Connected nodes only</label><br>
+
+          <input type="radio" name="show-radio" id="show-radio-all" value="all"{% if "all" == show_nodes_option %}checked{% endif %}> <label for="show-radio-all">All nodes</label><br>
+        </div>
+        </div>
     </div>
     <div id="search-pane" class="sidebar-pane">
       <input type="number" placeholder="Find Node By Vertex ID" min={{find_min}} max={{find_max}}>
@@ -110,12 +117,16 @@
       getGraph();
     }
 
-    function getGraph(from_click=false) {
+    function getGraph(from_click=false, radioEvent="all") {
       // get name value pairs for url
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
+
+      if (typeof radioEvent != 'string') {
+        radioEvent = encodeURIComponent(radioEvent.target.value);
+      }
 
       // when called by a click, check for conditions where shouldn't reload
       if (from_click && typeof from_click != 'object') {
@@ -216,6 +227,8 @@
       $('#trial-maker-id').on('change', resetNeighborsGetGraph);
       $('#show-infos').on('change', getGraph);
       $('#show-outgoing').on('change', getGraph);
+
+      $('#show-radio-container').on('change', event => { getGraph(false, event); });
     }
     $('document').ready(setup);
   </script>

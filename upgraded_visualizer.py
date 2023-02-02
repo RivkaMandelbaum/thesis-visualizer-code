@@ -330,7 +330,7 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
 
         # set info visibility (hidden by default)
         info_is_hidden = True
-        if show_infos and not G.nodes[node_id]["hidden"]:
+        if show_infos and not G.nodes[to_graph_id(node_id, False)]["hidden"]:
             # this info was clicked on; this info's parent was clicked on;
             # or a neighbor of this info's parent was clicked on
             if to_graph_id(node_id, False) == clicked_node or \
