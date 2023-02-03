@@ -25,6 +25,11 @@ SHOW_NODES_INCOMING = 'incoming'
 SHOW_NODES_OUTGOING = 'outgoing'
 SHOW_NODES_CONNECTED = 'connected'
 
+# solver
+FORCE_ATLAS_2BASED = 'force-atlas'
+REPULSION = 'repulsion'
+HIERARCHICAL_REPULSION = 'hrepulsion'
+
 PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 #-----------------------------------------------------------------------
@@ -172,6 +177,7 @@ def get_settings(request, from_index=False):
             show_infos (bool)
             show_outgoing (bool)
             show_incoming (bool)
+            solver (string)
     '''
     # check that data has been processed
     if len(list(node_data_by_trial_maker.keys())) == 0:
@@ -216,7 +222,10 @@ def get_settings(request, from_index=False):
     if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_OUTGOING]:
         show_outgoing = True
 
-    return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming)
+    # find the solver
+    solver = request.args.get("solver")
+
+    return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver)
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
@@ -260,8 +269,10 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
         node_color = CLICKED_COLOR
         node_is_hidden = False
     # check if node's neighbor was clicked on (connected either direction)
-    else:
+    elif clicked_graph_id != '':
         incoming_to_curr = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+        if clicked_graph_id == '':
+            print('empty string fro clicked graph id')
         clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
 
         if clicked_vertex in incoming_to_curr:
@@ -470,7 +481,7 @@ def get_graph(from_index=False):
     process_data()
 
     # get the settings
-    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming = get_settings(request, from_index=from_index)
+    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver = get_settings(request, from_index=from_index)
 
     # create network
     pyvis_net = Network(directed=True)
@@ -491,6 +502,15 @@ def get_graph(from_index=False):
             v_id = int(vertex_id_map[graph_id])
             if graph_id[0] == 'n':
                 global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+
+    # use the correct solver
+    if solver == FORCE_ATLAS_2BASED:
+        pyvis_net.force_atlas_2based()
+    elif solver == REPULSION:
+        pyvis_net.repulsion()
+    elif solver == HIERARCHICAL_REPULSION:
+        pyvis_net.hrepulsion()
+    # barnes hut is the default
 
     # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
@@ -553,6 +573,7 @@ def get_graph(from_index=False):
     response.set_cookie('show-infos', "true" if show_infos else "false")
     response.set_cookie('show-option', show_option_cookie)
     response.set_cookie('clicked-node', clicked_node)
+    response.set_cookie('solver', solver)
 
     return response
 
@@ -563,7 +584,7 @@ def create_visualizer():
     graph_html = get_graph(from_index=True)
 
     # get the settings
-    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming = get_settings(request, from_index=True)
+    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver = get_settings(request, from_index=True)
 
     # create values to fill in for page template
     node_data = node_data_by_trial_maker[exp]
@@ -590,7 +611,6 @@ def create_visualizer():
         degree_min=min_degree,
         degree_max=max_degree,
         degree_placeholder=int(degree),
-        physics_options=["barnes hut", "placeholder 1"],
         find_min=min_vertex_id,
         find_max=max_vertex_id,
         content=get_content_list(exp, clicked_node),
@@ -613,5 +633,6 @@ def create_visualizer():
     response.set_cookie('show-infos', ("true" if show_infos else "false"))
     response.set_cookie('show-option', show_option_cookie)
     response.set_cookie('clicked-node', clicked_node)
+    response.set_cookie('solver', solver)
 
     return response

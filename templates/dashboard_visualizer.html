@@ -41,11 +41,12 @@
         <input type="text" id="seed" name="seed">
       </div>
       <div class="sub-pane">
-        <h3>PyVis Physics</h3>
-        <select name="physics" id="physics">
-          {% for physics_option in physics_options %}
-            <option value={{physics_option}}>{{physics_option}}</option>
-          {% endfor %}
+        <h3>PyVis Physics Solver</h3>
+        <select name="solver" id="solver">
+          <option value="barnes-hut" id="barnes-hut-select">Barnes Hut</option>
+          <option value="force-atlas" id="force-atlas-select">forceAtlas2Based</option>
+          <option value="repulsion" id="repulsion">Repulsion</option>
+          <option value="hrepulsion" id="hrepulsion">Hierarchical Repulsion</option>
         </select>
       </div>
       <div class="sub-pane">
@@ -151,6 +152,7 @@
       let degree = encodeURIComponent($('#degree').val());
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
+      let solver = encodeURIComponent($('#solver').val());
 
       let showOption = encodeURIComponent(radioEvent);
       if (typeof radioEvent != 'string'){ // use radio button if valid
@@ -197,7 +199,7 @@
     }
 
       // make url and send request
-      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-option=' + showOption;
+      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-option=' + showOption + '&solver=' + solver;
 
       if (graphRequest != null) {
         graphRequest.abort();
@@ -262,8 +264,8 @@
       $('#degree').on('input', event => { validateRadioGetGraph(event)});
       $('#trial-maker-id').on('change', event => { validateRadioGetGraph(event) });
       $('#show-infos').on('change', getGraph);
-      // $('#clicked-node-input').on('input', validateRadio);
       $('#show-radio-container').on('change', event => { validateRadioGetGraph(event) });
+      $('#solver').on('change', getGraph);
     }
     $('document').ready(setup);
   </script>
