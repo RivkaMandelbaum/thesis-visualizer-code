@@ -259,23 +259,21 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
     elif clicked_is_info and info_data[info_data["id"] == clicked_graph_id]["origin_id"].values[0] == node_id: # node's info was clicked on
         node_color = CLICKED_COLOR
         node_is_hidden = False
-    # check if node's neighbor was clicked on
+    # check if node's neighbor was clicked on (connected either direction)
     else:
-        if show_outgoing:
-            incoming_to_curr = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
-            clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
+        incoming_to_curr = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+        clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
 
-            if clicked_vertex in incoming_to_curr:
-                # note: when switching degrees, this will get overwritten
-                # later in the code
-                node_color = NEIGHBOR_COLOR
+        if clicked_vertex in incoming_to_curr:
+            node_color = NEIGHBOR_COLOR
+            if show_outgoing:
                 node_is_hidden = False
 
-        if show_incoming:   # not else: both can be true
-            incoming_to_clicked = node_data[node_data["id"] == clicked_graph_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+        incoming_to_clicked = node_data[node_data["id"] == clicked_graph_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
 
-            if str(int(vert_id)) in incoming_to_clicked:
-                node_color = NEIGHBOR_COLOR
+        if str(int(vert_id)) in incoming_to_clicked:
+            node_color = NEIGHBOR_COLOR
+            if show_incoming:
                 node_is_hidden = False
 
     # color failed nodes (overwrites clicked coloring if relevant)
