@@ -26,6 +26,7 @@ SHOW_NODES_OUTGOING = 'outgoing'
 SHOW_NODES_CONNECTED = 'connected'
 
 # solver
+BARNES_HUT = 'barnes-hut'
 FORCE_ATLAS_2BASED = 'force-atlas'
 REPULSION = 'repulsion'
 HIERARCHICAL_REPULSION = 'hrepulsion'
@@ -224,6 +225,8 @@ def get_settings(request, from_index=False):
 
     # find the solver
     solver = request.args.get("solver")
+    if solver is None:
+        solver = BARNES_HUT
 
     return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver)
 
@@ -573,7 +576,6 @@ def get_graph(from_index=False):
     response.set_cookie('show-infos', "true" if show_infos else "false")
     response.set_cookie('show-option', show_option_cookie)
     response.set_cookie('clicked-node', clicked_node)
-    response.set_cookie('solver', solver)
 
     return response
 
@@ -633,6 +635,5 @@ def create_visualizer():
     response.set_cookie('show-infos', ("true" if show_infos else "false"))
     response.set_cookie('show-option', show_option_cookie)
     response.set_cookie('clicked-node', clicked_node)
-    response.set_cookie('solver', solver)
 
     return response
