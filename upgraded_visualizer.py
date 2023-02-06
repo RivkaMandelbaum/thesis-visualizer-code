@@ -31,7 +31,7 @@ FORCE_ATLAS_2BASED = 'force-atlas'
 REPULSION = 'repulsion'
 HIERARCHICAL_REPULSION = 'hrepulsion'
 
-PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
+# PATH = app.config.get('data_path') #"../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
@@ -119,7 +119,7 @@ def create_label(id):
     return label
 
 #---------------------- Complex helper functions --------------------------
-def process_data():
+def process_data(path):
     """ Reads the CSVs produced by exporting data into data structures
     that can be used by the visualizer. Specifically, fills in global
     dicts node_data_by_trial_maker and info_data_by_trial_maker, so that
@@ -132,9 +132,9 @@ def process_data():
         return
 
     # read CSVs
-    nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
-    networks = pd.read_csv(PATH + "network.csv", low_memory=False)
-    infos = pd.read_csv(PATH + "info.csv")
+    nodes = pd.read_csv(path + "node.csv", low_memory=False)
+    networks = pd.read_csv(path + "network.csv", low_memory=False)
+    infos = pd.read_csv(path + "info.csv")
 
    # filter networks: role = experiment
     network_data = networks
@@ -480,7 +480,7 @@ def get_content():
 @app.route('/getgraph', methods=['GET'])
 def get_graph(from_index=False):
     # process data into dicts (global variables)
-    process_data()
+    process_data(app.config.get('data_path'))
 
     # get the settings
     clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver = get_settings(request, from_index=from_index)

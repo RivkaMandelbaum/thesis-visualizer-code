@@ -2,7 +2,8 @@
 
 #-----------------------------------------------------------------------
 # runserver.py
-# Author: Bob Dondero
+# Author: Rivka Mandelbaum
+# Based on code written by: Bob Dondero
 #-----------------------------------------------------------------------
 
 from sys import argv, exit, stderr, path
@@ -10,11 +11,12 @@ from upgraded_visualizer import app
 import os
 
 path.append(os.path.dirname('/Desktop/psynet-work/PsyNet/visualizer'))
+TEST_DATA_PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 def main():
 
-    if len(argv) != 2:
-        print('Usage: ' + argv[0] + ' port', file=stderr)
+    if len(argv) != 3:
+        print('Usage: ' + argv[0] + ' port dirname', file=stderr)
         exit(1)
 
     try:
@@ -24,6 +26,11 @@ def main():
         exit(1)
 
     try:
+        if argv[2] in ["-test", "-t"]:
+            data_path =  TEST_DATA_PATH
+        else:
+            data_path = argv[2]
+        app.config['data_path'] = data_path
         app.run(host='0.0.0.0', port=port, debug=True)
     except Exception as ex:
         print(ex, file=stderr)
