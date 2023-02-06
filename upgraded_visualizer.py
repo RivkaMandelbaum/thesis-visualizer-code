@@ -158,8 +158,7 @@ def process_data():
         # filter infos like nodes, sort
         info_data = infos
         info_data = info_data[infos["type"] == "graph_chain_trial"]
-        info_data = info_data[["id", "creation_time", "details", "origin_id", "network_id", "participant_id", "failed"]] # TODO: Probably want more columns here
-        info_data = info_data.sort_values(["network_id", "origin_id"])
+        # info_data = info_data[["id", "creation_time", "details", "origin_id", "network_id", "participant_id", "failed"]]
 
         # add filtered Dataframes to the global dicts
         node_data_by_trial_maker[trial_maker_id] = node_data
