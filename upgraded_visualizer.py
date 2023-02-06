@@ -40,6 +40,10 @@ info_data_by_trial_maker = {} # TODO fix
 vertex_pos = None #TODO fix
 processing_done = False
 
+class ClickedNodeException(Exception):
+    "Clicked node or info not present in data"
+    pass
+
 app = Flask(__name__, template_folder='./templates')
 
 #-----------------------------------------------------------------------
@@ -426,10 +430,10 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoi
     clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
     if clicked_is_info:
         if clicked_graph_id not in info_data_by_trial_maker[trial_maker_id]["id"].values:
-            raise Exception("Error: Clicked info is not present in data.")
+            raise ClickedNodeException
     elif clicked_is_info != None:
         if clicked_graph_id not in node_data_by_trial_maker[trial_maker_id]["id"].values:
-            raise Exception("Error: Clicked node is not present in data.")
+            raise ClickedNodeException
 
     # use correct data for that trial_maker_id
     node_data = node_data_by_trial_maker[trial_maker_id]
@@ -487,7 +491,11 @@ def get_graph(from_index=False):
 
     # create network
     pyvis_net = Network(directed=True)
-    nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
+    try:
+        nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
+    except ClickedNodeException:
+        clicked_node = ''
+        nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
 
     # set up global network layout (fixed across degrees)
     global vertex_pos
