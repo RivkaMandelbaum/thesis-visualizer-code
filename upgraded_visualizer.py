@@ -37,7 +37,7 @@ PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-d
 #-------------------------  Global variables  --------------------------
 node_data_by_trial_maker = {} # TODO fix
 info_data_by_trial_maker = {} # TODO fix
-global_pos = None #TODO fix
+vertex_pos = None #TODO fix
 processing_done = False
 
 app = Flask(__name__, template_folder='./templates')
@@ -490,10 +490,10 @@ def get_graph(from_index=False):
     nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
 
     # set up global network layout (fixed across degrees)
-    global global_pos
-    if global_pos is None:
+    global vertex_pos
+    if vertex_pos is None:
         # print("Setting global position")
-        global_pos = {}
+        vertex_pos = {}
 
         # get the networkx graph-id-mapped position dict
         pos = nx.spring_layout(nx_graph)
@@ -503,7 +503,7 @@ def get_graph(from_index=False):
         for graph_id, xy in pos.items():
             v_id = int(vertex_id_map[graph_id])
             if graph_id[0] == 'n':
-                global_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+                vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
     # use the correct solver
     if solver == FORCE_ATLAS_2BASED:
@@ -519,8 +519,8 @@ def get_graph(from_index=False):
     for (graph_id, node) in pyvis_net.node_map.items():
         # position
         v_id = node['vertex_id']
-        node['x'] = global_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
-        node['y'] = global_pos[v_id]['y'] * 10
+        node['x'] = vertex_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
+        node['y'] = vertex_pos[v_id]['y'] * 10
 
         # overwrite incorrect neighbor color (leftover from prev degree)
         if node['color'] == NEIGHBOR_COLOR and clicked_node not in nx_graph.nodes:
