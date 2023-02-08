@@ -19,6 +19,9 @@ NEIGHBOR_COLOR = '#4C61FE' # midpoint between default color and dark blue
 DEFAULT_NODE_SHAPE = 'circle' # puts label inside node
 DEFAULT_INFO_SHAPE = 'box'
 
+# columns to remove from infos
+COLS_TO_DROP = ["property1", "property2", "property3", "property4", "property5"]
+
 # constants for the 'show X node only' settings
 SHOW_NODES_ALL = 'all'
 SHOW_NODES_INCOMING = 'incoming'
@@ -159,10 +162,10 @@ def process_data(path):
         node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids", "failed"]]
         node_data = node_data.sort_values(["network_id", "degree"])
 
-        # filter infos like nodes, sort
+        # filter infos like nodes
         info_data = infos
         info_data = info_data[infos["type"] == "graph_chain_trial"]
-        # info_data = info_data[["id", "creation_time", "details", "origin_id", "network_id", "participant_id", "failed"]]
+        info_data = info_data.drop(COLS_TO_DROP, axis="columns")
 
         # add filtered Dataframes to the global dicts
         node_data_by_trial_maker[trial_maker_id] = node_data
