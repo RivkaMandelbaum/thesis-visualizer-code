@@ -8,7 +8,7 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 from flask import Flask, render_template, make_response, request
-
+from numpy import random
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
@@ -306,11 +306,12 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
         color=node_color,
         degree=degree,
         is_info=False,
-        label=create_label(node_id),
+        label=create_label(vert_id),
         labelHighlightBold=True,
         shape=DEFAULT_NODE_SHAPE,
         vertex_id=vert_id,
-        hidden=node_is_hidden
+        hidden=node_is_hidden,
+        physics=False
         )
 
 def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos):
@@ -507,7 +508,7 @@ def get_graph(from_index=False):
         vertex_pos = {}
 
         # get the networkx graph-id-mapped position dict
-        pos = nx.spring_layout(nx_graph)
+        pos = nx.random_layout(nx_graph, seed=1)
 
         # convert to vertex-id-mapped position dict, with only node positions added
         vertex_id_map = nx_graph.nodes(data='vertex_id')
@@ -530,8 +531,8 @@ def get_graph(from_index=False):
     for (graph_id, node) in pyvis_net.node_map.items():
         # position
         v_id = node['vertex_id']
-        node['x'] = vertex_pos[v_id]['x'] * 10 # scaling necessary for x,y position to work
-        node['y'] = vertex_pos[v_id]['y'] * 10
+        node['x'] = vertex_pos[v_id]['x'] * 1500 # scaling necessary for x,y position to work
+        node['y'] = vertex_pos[v_id]['y'] * 1500
 
         # overwrite incorrect neighbor color (leftover from prev degree)
         if node['color'] == NEIGHBOR_COLOR and clicked_node not in nx_graph.nodes:
