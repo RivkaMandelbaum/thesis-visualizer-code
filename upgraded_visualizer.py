@@ -234,7 +234,12 @@ def get_settings(request, from_index=False):
     if solver is None:
         solver = BARNES_HUT
 
-    return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver)
+    # get the seed (or None if it was not the setting that was changed)
+    seed = request.args.get("seed")
+    if seed in ['', 'undefined']:
+        seed = None
+
+    return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver, seed)
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.

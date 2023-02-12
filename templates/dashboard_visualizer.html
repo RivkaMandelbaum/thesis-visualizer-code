@@ -38,7 +38,7 @@
       </div>
       <div class="sub-pane">
         <h3>Graph Seed</h3>
-        <input type="text" id="seed" name="seed">
+        <input type="number" id="seed" name="seed" min=0>
       </div>
       <div class="sub-pane">
         <h3>PyVis Physics Solver</h3>
@@ -91,7 +91,11 @@
 
     function handleGraphResponse(response) {
       $('#mynetwork').html(response);
+
+      // validations
       validateRadio();
+      $('#seed').attr("placeholder", $('#seed').val());
+      $('#seed').val('');
     }
 
     function handleContentResponse(response) {
@@ -153,6 +157,7 @@
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
       let solver = encodeURIComponent($('#solver').val());
+      let seed = encodeURIComponent($('#seed').val());
 
       let showOption = encodeURIComponent(radioEvent);
       if (typeof radioEvent != 'string'){ // use radio button if valid
@@ -199,7 +204,7 @@
     }
 
       // make url and send request
-      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-option=' + showOption + '&solver=' + solver;
+      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-option=' + showOption + '&solver=' + solver + '&seed=' + seed;
 
       if (graphRequest != null) {
         graphRequest.abort();
@@ -266,6 +271,7 @@
       $('#show-infos').on('change', getGraph);
       $('#show-radio-container').on('change', event => { validateRadioGetGraph(event) });
       $('#solver').on('change', getGraph);
+      $('#seed').on('input', getGraph);
     }
     $('document').ready(setup);
   </script>
