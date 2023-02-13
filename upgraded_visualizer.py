@@ -523,39 +523,50 @@ def get_graph(from_index=False):
 
     # get the settings
     settings = get_settings(request, from_index=from_index)
+    min_degree = node_data_by_trial_maker[settings[EXP]]["degree"].min()
 
-    # create network
-    pyvis_net = Network(directed=True)
-    try:
-        nx_graph = generate_graph(settings)
-    except ClickedNodeException:
-        settings[CLICKED_NODE] = ''
-        nx_graph = generate_graph(settings)
-
-    # set up global network layout (fixed across degrees)
+    # create network layout, based on layout generated on minimal degree
     global vertex_pos
-    if vertex_pos is None:
+    if vertex_pos is None or settings[SEED] is not None:
         # print("Setting global position")
         vertex_pos = {}
 
-        # get the networkx graph-id-mapped position dict
-        pos = nx.random_layout(nx_graph, seed=1)
+        # get graph settings for minimal degree
+        pos_settings = get_settings(request, from_index=from_index)
+        pos_settings[DEGREE] = min_degree
+
+        try:
+            pos_graph = generate_graph(pos_settings)
+        except ClickedNodeException:
+            settings[CLICKED_NODE] = ''
+            pos_graph = generate_graph(pos_settings)
+        pos = nx.random_layout(pos_graph, seed=pos_settings[SEED])
 
         # convert to vertex-id-mapped position dict, with only node positions added
-        vertex_id_map = nx_graph.nodes(data='vertex_id')
+        vertex_id_map = pos_graph.nodes(data='vertex_id')
         for graph_id, xy in pos.items():
             v_id = int(vertex_id_map[graph_id])
             if graph_id[0] == 'n':
                 vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
-    # use the correct solver
+    # create network
+    pyvis_net = Network(directed=True)
+    if settings[DEGREE] != min_degree:
+        try:
+            nx_graph = generate_graph(settings)
+        except ClickedNodeException:
+            settings[CLICKED_NODE] = ''
+            nx_graph = generate_graph(settings)
+    else: # no need to regenerate graph if the degree is right
+        nx_graph = pos_graph
+
+    # use the correct solver (barnes hut is the default)
     if settings[SOLVER] == FORCE_ATLAS_2BASED:
         pyvis_net.force_atlas_2based()
     elif settings[SOLVER] == REPULSION:
         pyvis_net.repulsion()
     elif settings[SOLVER] == HIERARCHICAL_REPULSION:
         pyvis_net.hrepulsion()
-    # barnes hut is the default
 
     # read networkx graph into pyvis, add necessary attributes
     pyvis_net.from_nx(nx_graph)
