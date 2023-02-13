@@ -163,6 +163,7 @@
       if (typeof radioEvent != 'string'){ // use radio button if valid
         showOption = encodeURIComponent(radioEvent.target.value);
       }
+      console.log(showOption);
 
       // when called by a click, check for conditions where shouldn't reload
       if (from_click && typeof from_click != 'object') {

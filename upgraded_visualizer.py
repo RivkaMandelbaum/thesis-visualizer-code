@@ -259,7 +259,7 @@ def get_settings(request, from_index=False):
     seed = request.args.get("seed")
     if seed in ['', 'undefined']:
         seed = None
-    settings[SEED] = seed
+    settings[SEED] = int(seed) if seed is not None else None
 
     return settings
 
@@ -477,11 +477,11 @@ def generate_graph(graph_settings):
     G = nx.DiGraph()
 
     # add nodes+edges from node_data to the Graph, and associated infos
-    deg_nodes = node_data[node_data["degree"] == degree]
+    deg_nodes = node_data[node_data["degree"] == graph_settings[DEGREE]]
     for node_id in deg_nodes["id"].values.tolist():
-        add_node_to_networkx(G, degree, graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_OUTGOING], graph_settings[SHOW_INCOMING])
-        add_edges_to_networkx(G, degree, graph_settings[EXP], node_id)
-        add_infos_to_networkx(G, degree, graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_INFOS])
+        add_node_to_networkx(G, graph_settings[DEGREE], graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_OUTGOING], graph_settings[SHOW_INCOMING])
+        add_edges_to_networkx(G, graph_settings[DEGREE], graph_settings[EXP], node_id)
+        add_infos_to_networkx(G, graph_settings[DEGREE], graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_INFOS])
 
     return G
 
