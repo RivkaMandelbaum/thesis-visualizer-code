@@ -36,6 +36,17 @@ HIERARCHICAL_REPULSION = 'hrepulsion'
 
 # PATH = app.config.get('data_path') #"../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
+# settings dict
+CLICKED_NODE = 'clicked_node'
+EXP = 'exp'
+DEGREE = 'degree'
+SHOW_INFOS = 'infos'
+SHOW_OUTGOING = 'outgoing'
+SHOW_INCOMING = 'incoming'
+SOLVER = 'solver'
+SEED = 'seed'
+GRAPH_SETTINGS = [CLICKED_NODE, EXP, DEGREE, SHOW_INFOS, SHOW_OUTGOING, SHOW_INCOMING, SOLVER, SEED]
+
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
 node_data_by_trial_maker = {} # TODO fix
@@ -174,10 +185,10 @@ def process_data(path):
     processing_done = True
 
 def get_settings(request, from_index=False):
-    ''' Get settings from the request, or set correct defaults.
+    ''' Get settings from the request, or use correct defaults.
         Must be run after process_data() so that the trial_maker_id validation works properly.
         Argument: request
-        Returns: tuple of:
+        Returns: dictionary of:
             clicked_node (graph ID)
             exp (string)
             degree (float)
@@ -185,21 +196,25 @@ def get_settings(request, from_index=False):
             show_outgoing (bool)
             show_incoming (bool)
             solver (string)
+            seed (int)
     '''
     # check that data has been processed
     if len(list(node_data_by_trial_maker.keys())) == 0:
         raise Exception("Settings cannot be found before data is processed.")
 
+    settings = {}
+
     # get clicked node id
     clicked_node = request.args.get('clicked-node')
     if clicked_node is None:
         clicked_node = request.cookies.get('clicked-node')
-    clicked_node = clicked_node if (clicked_node is not None) else ''
+    settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
 
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
     if exp is None or exp not in node_data_by_trial_maker.keys():
         exp = list(node_data_by_trial_maker.keys())[0]
+    settings[EXP] = exp
 
     # find the correct 'degree'
     degree = request.args.get('degree')
@@ -209,6 +224,7 @@ def get_settings(request, from_index=False):
             degree = node_data_by_trial_maker[exp]["degree"].min()
         else:
             degree = float(degree_cookie)
+    settings[DEGREE] = degree
 
     # check whether show infos is on, convert to boolean
     if from_index:
@@ -216,6 +232,7 @@ def get_settings(request, from_index=False):
     else:
         show_infos = request.args.get('show-infos')
     show_infos = True if (show_infos == "true") else False
+    settings[SHOW_INFOS] = show_infos
 
     # check whether show_incoming and show_outgoing should be on
     show_incoming = False
@@ -229,17 +246,22 @@ def get_settings(request, from_index=False):
     if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_OUTGOING]:
         show_outgoing = True
 
+    settings[SHOW_OUTGOING] = show_outgoing
+    settings[SHOW_INCOMING] = show_incoming
+
     # find the solver
     solver = request.args.get("solver")
     if solver is None:
         solver = BARNES_HUT
+    settings[SOLVER] = solver
 
     # get the seed (or None if it was not the setting that was changed)
     seed = request.args.get("seed")
     if seed in ['', 'undefined']:
         seed = None
+    settings[SEED] = seed
 
-    return (clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver, seed)
+    return settings
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
@@ -415,37 +437,41 @@ def add_edges_to_networkx(G, degree, trial_maker_id, node_id):
     edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
     G.add_edges_from(edge_list)
 
-def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoing, show_incoming):
-    ''' Given a degree (int or float) and a trial_maker_id in the experiment,
-    whether to show infos (bool), whether to hide some nodes, and the id of the clicked node, return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id. Some nodes or infos will have the "hidden" attribute set to True depending on the settings, but all of them will be in the DiGraph.
+def generate_graph(graph_settings):
+    ''' Given a dictionary of graph settings, containing: degree (int or float), trial_maker_id (string), whether to show infos (bool), whether to show outgoing nodes (bool) and/or incoming nodes (bool), which solver to use, a seed, and the id of the clicked node,  return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id. Some nodes or infos will have the "hidden" attribute set to True depending on the settings, but all of them will be in the DiGraph.
 
     show_outgoing: shows only nodes with outgoing edges from the clicked node
     show_incoming: shows only nodes with incoming edges from clicked node
     if both are true, then all nodes connected to the clicked node are shown
     if both are false, all nodes are shown
     '''
+    # validation: ensure settings dictionary is correctly passed in
+    for setting in GRAPH_SETTINGS:
+        if setting not in graph_settings:
+            raise Exception("Invalid graph settings")
+
     # validation: ensure degree is a float
-    if not isinstance(degree, float):
+    if not isinstance(graph_settings[DEGREE], float):
         try:
-            degree = float(degree)
+            degree = float(graph_settings[DEGREE])
         except Exception as ex:
             raise Exception("When converting degree to float, the following exception occured: " + str(ex))
 
     # validation: ensure trial_maker_id is valid
-    if trial_maker_id not in node_data_by_trial_maker.keys():
+    if graph_settings[EXP] not in node_data_by_trial_maker.keys():
         raise Exception("Invalid trial_maker_id.")
 
     # validation: ensure clicked_node is present in the data
-    clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
+    clicked_graph_id, clicked_is_info = from_graph_id(graph_settings[CLICKED_NODE])
     if clicked_is_info:
-        if clicked_graph_id not in info_data_by_trial_maker[trial_maker_id]["id"].values:
+        if clicked_graph_id not in info_data_by_trial_maker[graph_settings[EXP]]["id"].values:
             raise ClickedNodeException
     elif clicked_is_info != None:
-        if clicked_graph_id not in node_data_by_trial_maker[trial_maker_id]["id"].values:
+        if clicked_graph_id not in node_data_by_trial_maker[graph_settings[EXP]]["id"].values:
             raise ClickedNodeException
 
     # use correct data for that trial_maker_id
-    node_data = node_data_by_trial_maker[trial_maker_id]
+    node_data = node_data_by_trial_maker[graph_settings[EXP]]
 
     # create graph
     G = nx.DiGraph()
@@ -453,9 +479,9 @@ def generate_graph(degree, trial_maker_id, show_infos, clicked_node, show_outgoi
     # add nodes+edges from node_data to the Graph, and associated infos
     deg_nodes = node_data[node_data["degree"] == degree]
     for node_id in deg_nodes["id"].values.tolist():
-        add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming)
-        add_edges_to_networkx(G, degree, trial_maker_id, node_id)
-        add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos)
+        add_node_to_networkx(G, degree, graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_OUTGOING], graph_settings[SHOW_INCOMING])
+        add_edges_to_networkx(G, degree, graph_settings[EXP], node_id)
+        add_infos_to_networkx(G, degree, graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_INFOS])
 
     return G
 
@@ -496,15 +522,15 @@ def get_graph(from_index=False):
     process_data(app.config.get('data_path'))
 
     # get the settings
-    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver = get_settings(request, from_index=from_index)
+    settings = get_settings(request, from_index=from_index)
 
     # create network
     pyvis_net = Network(directed=True)
     try:
-        nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
+        nx_graph = generate_graph(settings)
     except ClickedNodeException:
-        clicked_node = ''
-        nx_graph = generate_graph(degree, exp, show_infos, clicked_node, show_outgoing, show_incoming)
+        settings[CLICKED_NODE] = ''
+        nx_graph = generate_graph(settings)
 
     # set up global network layout (fixed across degrees)
     global vertex_pos
@@ -523,11 +549,11 @@ def get_graph(from_index=False):
                 vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
     # use the correct solver
-    if solver == FORCE_ATLAS_2BASED:
+    if settings[SOLVER] == FORCE_ATLAS_2BASED:
         pyvis_net.force_atlas_2based()
-    elif solver == REPULSION:
+    elif settings[SOLVER] == REPULSION:
         pyvis_net.repulsion()
-    elif solver == HIERARCHICAL_REPULSION:
+    elif settings[SOLVER] == HIERARCHICAL_REPULSION:
         pyvis_net.hrepulsion()
     # barnes hut is the default
 
@@ -540,7 +566,7 @@ def get_graph(from_index=False):
         node['y'] = vertex_pos[v_id]['y'] * 1500
 
         # overwrite incorrect neighbor color (leftover from prev degree)
-        if node['color'] == NEIGHBOR_COLOR and clicked_node not in nx_graph.nodes:
+        if node['color'] == NEIGHBOR_COLOR and settings[CLICKED_NODE] not in nx_graph.nodes:
             node['color'] = DEFAULT_COLOR
 
     # generate default html with pyvis template
@@ -580,18 +606,18 @@ def get_graph(from_index=False):
     response = make_response(graph_html)
 
     show_option_cookie = "all"
-    if show_outgoing and show_incoming:
+    if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
         show_option_cookie = "connected"
-    elif show_outgoing:
+    elif settings[SHOW_OUTGOING]:
         show_option_cookie = "outgoing"
-    elif show_incoming:
+    elif settings[SHOW_INCOMING]:
         show_option_cookie = "incoming"
 
-    response.set_cookie('degree', str(degree))
-    response.set_cookie('exp', exp)
-    response.set_cookie('show-infos', "true" if show_infos else "false")
+    response.set_cookie('degree', str(settings[DEGREE]))
+    response.set_cookie('exp', settings[EXP])
+    response.set_cookie('show-infos', "true" if settings[SHOW_INFOS] else "false")
     response.set_cookie('show-option', show_option_cookie)
-    response.set_cookie('clicked-node', clicked_node)
+    response.set_cookie('clicked-node', settings[CLICKED_NODE])
 
     return response
 
@@ -602,10 +628,10 @@ def create_visualizer():
     graph_html = get_graph(from_index=True)
 
     # get the settings
-    clicked_node, exp, degree, show_infos, show_outgoing, show_incoming, solver = get_settings(request, from_index=True)
+    settings = get_settings(request, from_index=True)
 
     # create values to fill in for page template
-    node_data = node_data_by_trial_maker[exp]
+    node_data = node_data_by_trial_maker[settings[EXP]]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
     min_vertex_id = node_data["vertex_id"].min()
@@ -614,11 +640,11 @@ def create_visualizer():
     trialmaker_options = node_data_by_trial_maker.keys()
 
     show_nodes_val = SHOW_NODES_ALL
-    if show_outgoing and show_incoming:
+    if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
         show_nodes_val = SHOW_NODES_CONNECTED
-    elif show_outgoing:
+    elif settings[SHOW_OUTGOING]:
         show_nodes_val = SHOW_NODES_OUTGOING
-    elif show_incoming:
+    elif settings[SHOW_INCOMING]:
         show_nodes_val = SHOW_NODES_INCOMING
 
     # render template and make response
@@ -628,28 +654,28 @@ def create_visualizer():
         trialmaker_options=trialmaker_options,
         degree_min=min_degree,
         degree_max=max_degree,
-        degree_placeholder=int(degree),
+        degree_placeholder=int(settings[DEGREE]),
         find_min=min_vertex_id,
         find_max=max_vertex_id,
-        content=get_content_list(exp, clicked_node),
-        show_infos_checked=("checked" if show_infos else ""),
+        content=get_content_list(settings[EXP], settings[CLICKED_NODE]),
+        show_infos_checked=("checked" if settings[SHOW_INFOS] else ""),
         show_nodes_option = show_nodes_val,
         )
     response = make_response(page_html)
 
     show_option_cookie = "all"
-    if show_outgoing and show_incoming:
+    if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
         show_option_cookie = "connected"
-    elif show_outgoing:
+    elif settings[SHOW_OUTGOING]:
         show_option_cookie = "outgoing"
-    elif show_incoming:
+    elif settings[SHOW_INCOMING]:
         show_option_cookie = "incoming"
 
     # set cookies and return response
-    response.set_cookie('degree', str(degree))
-    response.set_cookie('exp', exp)
-    response.set_cookie('show-infos', ("true" if show_infos else "false"))
+    response.set_cookie('degree', str(settings[DEGREE]))
+    response.set_cookie('exp', settings[EXP])
+    response.set_cookie('show-infos', ("true" if settings[SHOW_INFOS] else "false"))
     response.set_cookie('show-option', show_option_cookie)
-    response.set_cookie('clicked-node', clicked_node)
+    response.set_cookie('clicked-node', settings[CLICKED_NODE])
 
     return response
