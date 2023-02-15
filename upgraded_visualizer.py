@@ -176,7 +176,10 @@ def process_data(path):
         # filter infos like nodes
         info_data = infos
         info_data = info_data[infos["type"] == "graph_chain_trial"]
-        info_data = info_data.drop(COLS_TO_DROP, axis="columns")
+        try:
+            info_data = info_data.drop(COLS_TO_DROP, axis="columns")
+        except KeyError:
+            print("Data does not contain property1-property5")
 
         # add filtered Dataframes to the global dicts
         node_data_by_trial_maker[trial_maker_id] = node_data
