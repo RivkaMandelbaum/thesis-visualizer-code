@@ -53,7 +53,7 @@
         <h3>Node Layout Option</h3>
         <select name="layout" id="layout">
           {% for layout_key in layout_options %}
-              <option value={{layout_key}} id="{{layout_key}}-select">{{layout_options[layout_key]['name']}}</option>
+              <option value={{layout_key}} id="{{layout_key}}-select" {%if selected_layout == layout_key%} selected {%endif%}>{{layout_options[layout_key]['name']}}</option>
           {% endfor %}
         </select>
       </div>

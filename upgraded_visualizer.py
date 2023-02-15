@@ -207,6 +207,7 @@ def get_settings(request, from_index=False):
             clicked_node (graph ID)
             exp (string)
             degree (float)
+            layout (string)
             show_infos (bool)
             show_outgoing (bool)
             show_incoming (bool)
@@ -690,6 +691,7 @@ def create_visualizer():
         show_infos_checked=("checked" if settings[SHOW_INFOS] else ""),
         show_nodes_option = show_nodes_val,
         layout_options = LAYOUT_OPTIONS,
+        selected_layout = settings[LAYOUT],
         )
     response = make_response(page_html)
 
