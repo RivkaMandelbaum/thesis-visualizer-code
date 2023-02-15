@@ -271,8 +271,10 @@ def get_settings(request, from_index=False):
         solver = BARNES_HUT
     settings[SOLVER] = solver
 
-    # find the layout
+    # find the layout (request or cookie)
     layout = request.args.get("layout")
+    if not layout:
+        layout = request.cookies.get('layout')
     if layout not in LAYOUT_OPTIONS.keys():
         layout = DEFAULT_LAYOUT
     settings[LAYOUT] = layout
