@@ -34,18 +34,30 @@ FORCE_ATLAS_2BASED = 'force-atlas'
 REPULSION = 'repulsion'
 HIERARCHICAL_REPULSION = 'hrepulsion'
 
+# layout options
+LAYOUT_OPTIONS = {
+    'circular': {'name': 'Circular Layout', 'has_seed': False, 'func': nx.circular_layout},
+    'kamada-kawai': {'name': 'Kamada-Kawai Layout', 'has_seed': False, 'func': nx.kamada_kawai_layout},
+    'random': {'name': 'Random Layout', 'has_seed': True, 'func': nx.random_layout},
+    'shell': {'name': 'Shell Layout', 'has_seed': False, 'func': nx.shell_layout},
+    'spectral': {'name': 'Spectral Layout', 'has_seed': False, 'func': nx.spectral_layout},
+    'spiral': {'name': 'Spiral Layout', 'has_seed': False, 'func': nx.spiral_layout},
+    'spring': {'name': 'Spring Layout', 'has_seed': True, 'func': nx.spring_layout}
+}
+DEFAULT_LAYOUT = 'spring' # networkx default
 # PATH = app.config.get('data_path') #"../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 # settings dict
 CLICKED_NODE = 'clicked_node'
-EXP = 'exp'
 DEGREE = 'degree'
+EXP = 'exp'
+LAYOUT = 'layout'
 SHOW_INFOS = 'infos'
-SHOW_OUTGOING = 'outgoing'
-SHOW_INCOMING = 'incoming'
-SOLVER = 'solver'
 SEED = 'seed'
-GRAPH_SETTINGS = [CLICKED_NODE, EXP, DEGREE, SHOW_INFOS, SHOW_OUTGOING, SHOW_INCOMING, SOLVER, SEED]
+SHOW_INCOMING = 'incoming'
+SHOW_OUTGOING = 'outgoing'
+SOLVER = 'solver'
+GRAPH_SETTINGS = [CLICKED_NODE, EXP, DEGREE, SHOW_INFOS, SHOW_OUTGOING, SHOW_INCOMING, SOLVER, SEED, LAYOUT]
 
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
@@ -257,6 +269,12 @@ def get_settings(request, from_index=False):
     if solver is None:
         solver = BARNES_HUT
     settings[SOLVER] = solver
+
+    # find the layout
+    layout = request.args.get("layout")
+    if layout not in LAYOUT_OPTIONS.keys():
+        layout = DEFAULT_LAYOUT
+    settings[LAYOUT] = layout
 
     # get the seed (or None if it was not the setting that was changed)
     seed = request.args.get("seed")
@@ -526,7 +544,7 @@ def get_graph(from_index=False):
 
     # create network layout, based on layout generated on minimal degree
     global vertex_pos
-    if vertex_pos is None or settings[SEED] is not None:
+    if True:#vertex_pos is None or settings[SEED] is not None:
         # print("Setting global position")
         vertex_pos = {}
 
@@ -537,9 +555,13 @@ def get_graph(from_index=False):
         try:
             pos_graph = generate_graph(pos_settings)
         except ClickedNodeException:
-            settings[CLICKED_NODE] = ''
+            pos_settings[CLICKED_NODE] = ''
             pos_graph = generate_graph(pos_settings)
-        pos = nx.random_layout(pos_graph, seed=pos_settings[SEED])
+
+        if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
+            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
+        else:
+            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
 
         # convert to vertex-id-mapped position dict, with only node positions added
         vertex_id_map = pos_graph.nodes(data='vertex_id')
@@ -667,6 +689,7 @@ def create_visualizer():
         content=get_content_list(settings[EXP], settings[CLICKED_NODE]),
         show_infos_checked=("checked" if settings[SHOW_INFOS] else ""),
         show_nodes_option = show_nodes_val,
+        layout_options = LAYOUT_OPTIONS,
         )
     response = make_response(page_html)
 

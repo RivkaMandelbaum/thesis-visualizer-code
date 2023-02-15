@@ -41,12 +41,20 @@
         <input type="number" id="seed" name="seed" min=0>
       </div>
       <div class="sub-pane">
-        <h3>PyVis Physics Solver</h3>
+        <h3>Physics Solver</h3>
         <select name="solver" id="solver">
           <option value="barnes-hut" id="barnes-hut-select">Barnes Hut</option>
           <option value="force-atlas" id="force-atlas-select">forceAtlas2Based</option>
           <option value="repulsion" id="repulsion">Repulsion</option>
           <option value="hrepulsion" id="hrepulsion">Hierarchical Repulsion</option>
+        </select>
+      </div>
+      <div class="sub-pane">
+        <h3>Node Layout Option</h3>
+        <select name="layout" id="layout">
+          {% for layout_key in layout_options %}
+              <option value={{layout_key}} id="{{layout_key}}-select">{{layout_options[layout_key]['name']}}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="sub-pane">
@@ -153,17 +161,19 @@
     function getGraph(from_click=false, radioEvent="") {
       // get name value pairs for url
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
-      let degree = encodeURIComponent($('#degree').val());
+
       let showInfos = encodeURIComponent($('#show-infos').is(":checked"));
       let hideNonNeighbors = encodeURIComponent($('#show-outgoing').is(":checked"));
+
+      let degree = encodeURIComponent($('#degree').val());
       let solver = encodeURIComponent($('#solver').val());
+      let layout = encodeURIComponent($('#layout').val());
       let seed = encodeURIComponent($('#seed').val());
 
       let showOption = encodeURIComponent(radioEvent);
       if (typeof radioEvent != 'string'){ // use radio button if valid
         showOption = encodeURIComponent(radioEvent.target.value);
       }
-      console.log(showOption);
 
       // when called by a click, check for conditions where shouldn't reload
       if (from_click && typeof from_click != 'object') {
@@ -205,7 +215,10 @@
     }
 
       // make url and send request
-      let url = '/getgraph?degree=' + degree + '&show-infos=' + showInfos + '&clicked-node=' + clickedNode + '&show-option=' + showOption + '&solver=' + solver + '&seed=' + seed;
+      let url = '/getgraph?clicked-node=' + clickedNode
+                  + '&degree=' + degree +  '&layout=' + layout
+                  + '&seed=' + seed + '&show-infos=' + showInfos
+                  + '&show-option=' + showOption + '&solver=' + solver;
 
       if (graphRequest != null) {
         graphRequest.abort();
@@ -273,6 +286,7 @@
       $('#show-radio-container').on('change', event => { validateRadioGetGraph(event) });
       $('#solver').on('change', getGraph);
       $('#seed').on('input', getGraph);
+      $('#layout').on('change', getGraph);
     }
     $('document').ready(setup);
   </script>
