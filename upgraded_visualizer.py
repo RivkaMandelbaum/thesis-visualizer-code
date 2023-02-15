@@ -285,6 +285,30 @@ def get_settings(request, from_index=False):
 
     return settings
 
+def set_graph_cookies(response, settings):
+    ''' Sets cookies based on settings:
+            clicked-node
+            degree
+            exp
+            layout
+            show-infos
+            show-option
+    '''
+    response.set_cookie('clicked-node', settings[CLICKED_NODE])
+    response.set_cookie('degree', str(settings[DEGREE]))
+    response.set_cookie('exp', settings[EXP])
+    response.set_cookie('layout', settings[LAYOUT])
+    response.set_cookie('show-infos', "true" if settings[SHOW_INFOS] else "false")
+
+    show_option_cookie = "all"
+    if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
+        show_option_cookie = "connected"
+    elif settings[SHOW_OUTGOING]:
+        show_option_cookie = "outgoing"
+    elif settings[SHOW_INCOMING]:
+        show_option_cookie = "incoming"
+    response.set_cookie('show-option', show_option_cookie)
+
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
         Arguments:
@@ -634,20 +658,7 @@ def get_graph(from_index=False):
         return graph_html
 
     response = make_response(graph_html)
-
-    show_option_cookie = "all"
-    if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
-        show_option_cookie = "connected"
-    elif settings[SHOW_OUTGOING]:
-        show_option_cookie = "outgoing"
-    elif settings[SHOW_INCOMING]:
-        show_option_cookie = "incoming"
-
-    response.set_cookie('degree', str(settings[DEGREE]))
-    response.set_cookie('exp', settings[EXP])
-    response.set_cookie('show-infos', "true" if settings[SHOW_INFOS] else "false")
-    response.set_cookie('show-option', show_option_cookie)
-    response.set_cookie('clicked-node', settings[CLICKED_NODE])
+    set_graph_cookies(response, settings)
 
     return response
 
@@ -695,19 +706,6 @@ def create_visualizer():
         )
     response = make_response(page_html)
 
-    show_option_cookie = "all"
-    if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
-        show_option_cookie = "connected"
-    elif settings[SHOW_OUTGOING]:
-        show_option_cookie = "outgoing"
-    elif settings[SHOW_INCOMING]:
-        show_option_cookie = "incoming"
-
-    # set cookies and return response
-    response.set_cookie('degree', str(settings[DEGREE]))
-    response.set_cookie('exp', settings[EXP])
-    response.set_cookie('show-infos', ("true" if settings[SHOW_INFOS] else "false"))
-    response.set_cookie('show-option', show_option_cookie)
-    response.set_cookie('clicked-node', settings[CLICKED_NODE])
+    set_graph_cookies(response, settings)
 
     return response
