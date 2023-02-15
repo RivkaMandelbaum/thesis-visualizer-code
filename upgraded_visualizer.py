@@ -219,15 +219,15 @@ def get_settings(request, from_index=False):
         exp = list(node_data_by_trial_maker.keys())[0]
     settings[EXP] = exp
 
-    # find the correct 'degree'
+    # find the correct 'degree' and convert to float
     degree = request.args.get('degree')
     if degree in [None, '']:
         degree_cookie = request.cookies.get('degree')
         if degree_cookie is None:
             degree = node_data_by_trial_maker[exp]["degree"].min()
         else:
-            degree = float(degree_cookie)
-    settings[DEGREE] = degree
+            degree = degree_cookie
+    settings[DEGREE] = float(degree)
 
     # check whether show infos is on, convert to boolean
     if from_index:
@@ -452,13 +452,6 @@ def generate_graph(graph_settings):
     for setting in GRAPH_SETTINGS:
         if setting not in graph_settings:
             raise Exception("Invalid graph settings")
-
-    # validation: ensure degree is a float
-    if not isinstance(graph_settings[DEGREE], float):
-        try:
-            degree = float(graph_settings[DEGREE])
-        except Exception as ex:
-            raise Exception("When converting degree to float, the following exception occured: " + str(ex))
 
     # validation: ensure trial_maker_id is valid
     if graph_settings[EXP] not in node_data_by_trial_maker.keys():
