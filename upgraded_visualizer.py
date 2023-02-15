@@ -515,7 +515,10 @@ def get_content():
 @app.route('/getgraph', methods=['GET'])
 def get_graph(from_index=False):
     # process data into dicts (global variables)
-    process_data(app.config.get('data_path'))
+    data_path = app.config.get('data_path')
+    if data_path[-1] != "/":
+        data_path += "/"
+    process_data(data_path)
 
     # get the settings
     settings = get_settings(request, from_index=from_index)
@@ -547,14 +550,11 @@ def get_graph(from_index=False):
 
     # create network
     pyvis_net = Network(directed=True)
-    if settings[DEGREE] != min_degree:
-        try:
-            nx_graph = generate_graph(settings)
-        except ClickedNodeException:
-            settings[CLICKED_NODE] = ''
-            nx_graph = generate_graph(settings)
-    else: # no need to regenerate graph if the degree is right
-        nx_graph = pos_graph
+    try:
+        nx_graph = generate_graph(settings)
+    except ClickedNodeException:
+        settings[CLICKED_NODE] = ''
+        nx_graph = generate_graph(settings)
 
     # use the correct solver (barnes hut is the default)
     if settings[SOLVER] == FORCE_ATLAS_2BASED:
