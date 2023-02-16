@@ -53,7 +53,20 @@
         <h3>Node Layout Option</h3>
         <select name="layout" id="layout">
           {% for layout_key in layout_options %}
-              <option value={{layout_key}} id="{{layout_key}}-select" {%if selected_layout == layout_key%} selected {%endif%}>{{layout_options[layout_key]['name']}}</option>
+              <option value={{layout_key}}
+                      id="{{layout_key}}-select"
+                      {% if selected_layout == layout_key %}
+                        selected
+                      {% endif %}
+                      data-seed=
+                      {% if layout_options[layout_key]['has_seed'] == True %}
+                        "use-seed"
+                      {% else %}
+                        "none"
+                      {% endif %}
+                      >
+                        {{layout_options[layout_key]['name']}}
+              </option>
           {% endfor %}
         </select>
       </div>
@@ -101,7 +114,7 @@
       $('#mynetwork').html(response);
 
       // validations
-      validateRadio();
+      validateEnabledSettings();
       $('#seed').attr("placeholder", $('#seed').val());
       $('#seed').val('');
     }
@@ -126,13 +139,22 @@
 
     let graphRequest = null;
 
-    function validateRadio() {
+    function validateEnabledSettings() {
+      // seed
+      if ($('#layout').find(":selected").attr('data-seed') == "use-seed") {
+        $('#seed').removeAttr("disabled");
+      }
+      else {
+        $('#seed').attr("disabled", true);
+      }
+
+      // radio buttons
       let clickedNode = document.getElementById("clicked-node-input").value;
       let radioValid = false;
 
-      // clicked node was from a previous degree or trial maker id
-      // or a node has not yet been clicked on
       if (nodes.get(clickedNode) == null) {
+        // clicked node was from a previous degree or trial maker id
+        // or a node has not yet been clicked on
         $('#clicked-node-input').prop('value', '');
         $('#show-radio-outgoing').prop('disabled', true);
         $('#show-radio-incoming').prop('disabled', true);
@@ -150,9 +172,9 @@
       return radioValid;
     }
 
-    function validateRadioGetGraph(event) {
+    function validateEnabledSettingsGetGraph(event) {
       let validRadioValue = $('#show-radio-all').val();
-      if (validateRadio()) {
+      if (validateEnabledSettings()) {
         validRadioValue = event;
       }
       getGraph(false, validRadioValue);
@@ -279,11 +301,11 @@
     }
 
     function setup() {
-      validateRadio();
-      $('#degree').on('input', event => { validateRadioGetGraph(event)});
-      $('#trial-maker-id').on('change', event => { validateRadioGetGraph(event) });
+      validateEnabledSettings();
+      $('#degree').on('input', event => { validateEnabledSettingsGetGraph(event)});
+      $('#trial-maker-id').on('change', event => { validateEnabledSettingsGetGraph(event) });
       $('#show-infos').on('change', getGraph);
-      $('#show-radio-container').on('change', event => { validateRadioGetGraph(event) });
+      $('#show-radio-container').on('change', event => { validateEnabledSettingsGetGraph(event) });
       $('#solver').on('change', getGraph);
       $('#seed').on('input', getGraph);
       $('#layout').on('change', getGraph);

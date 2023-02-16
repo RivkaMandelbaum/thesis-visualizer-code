@@ -571,8 +571,8 @@ def get_graph(from_index=False):
 
     # create network layout, based on layout generated on minimal degree
     global vertex_pos
-    if True:#vertex_pos is None or settings[SEED] is not None:
-        # print("Setting global position")
+    if (vertex_pos is None) or (settings[LAYOUT] != request.cookies.get(LAYOUT)) or (settings[SEED] is not None):
+        # print("(Re)setting global position")
         vertex_pos = {}
 
         # get graph settings for minimal degree
