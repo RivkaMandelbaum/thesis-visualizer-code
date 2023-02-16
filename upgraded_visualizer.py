@@ -27,6 +27,7 @@ SHOW_NODES_ALL = 'all'
 SHOW_NODES_INCOMING = 'incoming'
 SHOW_NODES_OUTGOING = 'outgoing'
 SHOW_NODES_CONNECTED = 'connected'
+SHOW_OPTION = 'show-option'
 
 # solver
 BARNES_HUT = 'barnes-hut'
@@ -48,15 +49,15 @@ DEFAULT_LAYOUT = 'spring' # networkx default
 # PATH = app.config.get('data_path') #"../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 # settings dict
-CLICKED_NODE = 'clicked_node'
+CLICKED_NODE = 'clicked-node'
 DEGREE = 'degree'
 EXP = 'exp'
 LAYOUT = 'layout'
-SHOW_INFOS = 'infos'
 SEED = 'seed'
+SOLVER = 'solver'
+SHOW_INFOS = 'show-infos'
 SHOW_INCOMING = 'incoming'
 SHOW_OUTGOING = 'outgoing'
-SOLVER = 'solver'
 GRAPH_SETTINGS = [CLICKED_NODE, EXP, DEGREE, SHOW_INFOS, SHOW_OUTGOING, SHOW_INCOMING, SOLVER, SEED, LAYOUT]
 
 #-----------------------------------------------------------------------
@@ -221,9 +222,9 @@ def get_settings(request, from_index=False):
     settings = {}
 
     # get clicked node id
-    clicked_node = request.args.get('clicked-node')
+    clicked_node = request.args.get(CLICKED_NODE)
     if clicked_node is None:
-        clicked_node = request.cookies.get('clicked-node')
+        clicked_node = request.cookies.get(CLICKED_NODE)
     settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
 
     # find the correct 'exp' (trial maker id)
@@ -233,9 +234,9 @@ def get_settings(request, from_index=False):
     settings[EXP] = exp
 
     # find the correct 'degree' and convert to float
-    degree = request.args.get('degree')
+    degree = request.args.get(DEGREE)
     if degree in [None, '']:
-        degree_cookie = request.cookies.get('degree')
+        degree_cookie = request.cookies.get(DEGREE)
         if degree_cookie is None:
             degree = node_data_by_trial_maker[exp]["degree"].min()
         else:
@@ -244,9 +245,9 @@ def get_settings(request, from_index=False):
 
     # check whether show infos is on, convert to boolean
     if from_index:
-        show_infos = request.cookies.get('show-infos')
+        show_infos = request.cookies.get(SHOW_INFOS)
     else:
-        show_infos = request.args.get('show-infos')
+        show_infos = request.args.get(SHOW_INFOS)
     show_infos = True if (show_infos == "true") else False
     settings[SHOW_INFOS] = show_infos
 
@@ -254,9 +255,9 @@ def get_settings(request, from_index=False):
     show_incoming = False
     show_outgoing = False
 
-    show_option = request.args.get("show-option")
+    show_option = request.args.get(SHOW_OPTION)
     if not show_option:
-        show_option = request.cookies.get('show-option')
+        show_option = request.cookies.get(SHOW_OPTION)
     if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_INCOMING]:
         show_incoming = True
     if show_option in [SHOW_NODES_CONNECTED, SHOW_NODES_OUTGOING]:
@@ -266,21 +267,21 @@ def get_settings(request, from_index=False):
     settings[SHOW_INCOMING] = show_incoming
 
     # find the solver
-    solver = request.args.get("solver")
+    solver = request.args.get(SOLVER)
     if solver is None:
         solver = BARNES_HUT
     settings[SOLVER] = solver
 
     # find the layout (request or cookie)
-    layout = request.args.get("layout")
+    layout = request.args.get(LAYOUT)
     if not layout:
-        layout = request.cookies.get('layout')
+        layout = request.cookies.get(LAYOUT)
     if layout not in LAYOUT_OPTIONS.keys():
         layout = DEFAULT_LAYOUT
     settings[LAYOUT] = layout
 
     # get the seed (or None if it was not the setting that was changed)
-    seed = request.args.get("seed")
+    seed = request.args.get(SEED)
     if seed in ['', 'undefined']:
         seed = None
     settings[SEED] = int(seed) if seed is not None else None
@@ -296,20 +297,20 @@ def set_graph_cookies(response, settings):
             show-infos
             show-option
     '''
-    response.set_cookie('clicked-node', settings[CLICKED_NODE])
-    response.set_cookie('degree', str(settings[DEGREE]))
+    response.set_cookie(CLICKED_NODE, settings[CLICKED_NODE])
+    response.set_cookie(DEGREE, str(settings[DEGREE]))
     response.set_cookie('exp', settings[EXP])
-    response.set_cookie('layout', settings[LAYOUT])
-    response.set_cookie('show-infos', "true" if settings[SHOW_INFOS] else "false")
+    response.set_cookie(LAYOUT, settings[LAYOUT])
+    response.set_cookie(SHOW_INFOS, "true" if settings[SHOW_INFOS] else "false")
 
     show_option_cookie = "all"
     if settings[SHOW_OUTGOING] and settings[SHOW_INCOMING]:
-        show_option_cookie = "connected"
+        show_option_cookie = SHOW_NODES_CONNECTED
     elif settings[SHOW_OUTGOING]:
-        show_option_cookie = "outgoing"
+        show_option_cookie = SHOW_NODES_OUTGOING
     elif settings[SHOW_INCOMING]:
-        show_option_cookie = "incoming"
-    response.set_cookie('show-option', show_option_cookie)
+        show_option_cookie = SHOW_NODES_INCOMING
+    response.set_cookie(SHOW_OPTION, show_option_cookie)
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
@@ -356,7 +357,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
     elif clicked_graph_id != '':
         incoming_to_curr = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
         if clicked_graph_id == '':
-            print('empty string fro clicked graph id')
+            print('empty string from clicked graph id')
         clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
 
         if clicked_vertex in incoming_to_curr:
@@ -535,7 +536,7 @@ def set_clicked_node():
     if from_graph_id(clicked_node)[1] is None:
         raise Exception("Error in graph id to set.")
 
-    response.set_cookie('clicked-node', clicked_node)
+    response.set_cookie(CLICKED_NODE, clicked_node)
 
     return response
 
@@ -543,9 +544,9 @@ def set_clicked_node():
 def get_content():
     # get arguments out of request
     exp = request.args.get('exp')
-    id = request.args.get('clicked-node')
+    id = request.args.get(CLICKED_NODE)
     if id is None:
-        id = request.cookies.get('clicked-node')
+        id = request.cookies.get(CLICKED_NODE)
 
     # get content list and convert to html
     content_list = get_content_list(exp, id)
