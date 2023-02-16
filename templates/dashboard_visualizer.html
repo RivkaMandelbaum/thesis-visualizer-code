@@ -43,10 +43,14 @@
       <div class="sub-pane">
         <h3>Physics Solver</h3>
         <select name="solver" id="solver">
-          <option value="barnes-hut" id="barnes-hut-select">Barnes Hut</option>
-          <option value="force-atlas" id="force-atlas-select">forceAtlas2Based</option>
-          <option value="repulsion" id="repulsion">Repulsion</option>
-          <option value="hrepulsion" id="hrepulsion">Hierarchical Repulsion</option>
+          {% for solver_key in solver_options%}
+            <option value={{solver_key}} id="{{solver_key}}-select"
+                {% if selected_solver == solver_key %}
+                selected
+                {% endif %}>
+                {{solver_options[solver_key]}}
+            </option>
+          {% endfor %}
         </select>
       </div>
       <div class="sub-pane">

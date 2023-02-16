@@ -34,7 +34,12 @@ BARNES_HUT = 'barnes-hut'
 FORCE_ATLAS_2BASED = 'force-atlas'
 REPULSION = 'repulsion'
 HIERARCHICAL_REPULSION = 'hrepulsion'
-VALID_SOLVERS = [BARNES_HUT, FORCE_ATLAS_2BASED, REPULSION, HIERARCHICAL_REPULSION]
+VALID_SOLVERS = {
+    BARNES_HUT: "Barnes Hut",
+    FORCE_ATLAS_2BASED: "forceAtlas2Based",
+    REPULSION: "Repulsion",
+    HIERARCHICAL_REPULSION: "Hierarchical Repulsion"
+}
 
 # layout options
 LAYOUT_OPTIONS = {
@@ -271,7 +276,7 @@ def get_settings(request, from_index=False):
     solver = request.args.get(SOLVER)
     if solver is None:
         solver = request.cookies.get(SOLVER)
-    if solver not in VALID_SOLVERS:
+    if solver not in VALID_SOLVERS.keys():
         print("Invalid solver: " + solver)
         solver = BARNES_HUT
     settings[SOLVER] = solver
@@ -712,6 +717,8 @@ def create_visualizer():
         show_nodes_option = show_nodes_val,
         layout_options = LAYOUT_OPTIONS,
         selected_layout = settings[LAYOUT],
+        solver_options = VALID_SOLVERS,
+        selected_solver = settings[SOLVER],
         )
     response = make_response(page_html)
 
