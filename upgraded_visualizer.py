@@ -43,13 +43,13 @@ VALID_SOLVERS = {
 
 # layout options
 LAYOUT_OPTIONS = {
-    'circular': {'name': 'Circular Layout', 'has_seed': False, 'func': nx.circular_layout},
-    'kamada-kawai': {'name': 'Kamada-Kawai Layout', 'has_seed': False, 'func': nx.kamada_kawai_layout},
-    'random': {'name': 'Random Layout', 'has_seed': True, 'func': nx.random_layout},
-    'shell': {'name': 'Shell Layout', 'has_seed': False, 'func': nx.shell_layout},
-    'spectral': {'name': 'Spectral Layout', 'has_seed': False, 'func': nx.spectral_layout},
-    'spiral': {'name': 'Spiral Layout', 'has_seed': False, 'func': nx.spiral_layout},
-    'spring': {'name': 'Spring Layout', 'has_seed': True, 'func': nx.spring_layout}
+    'circular': {'name': 'Circular Layout', 'has_seed': False, 'func': nx.circular_layout, 'scale': 500},
+    'kamada-kawai': {'name': 'Kamada-Kawai Layout', 'has_seed': False, 'func': nx.kamada_kawai_layout, 'scale': 1500},
+    'random': {'name': 'Random Layout', 'has_seed': True, 'func': nx.random_layout, 'scale': 1500},
+    'shell': {'name': 'Shell Layout', 'has_seed': False, 'func': nx.shell_layout, 'scale': 500},
+    'spectral': {'name': 'Spectral Layout', 'has_seed': False, 'func': nx.spectral_layout, 'scale': 1500},
+    'spiral': {'name': 'Spiral Layout', 'has_seed': False, 'func': nx.spiral_layout, 'scale': 1000},
+    'spring': {'name': 'Spring Layout', 'has_seed': True, 'func': nx.spring_layout, 'scale': 1500}
 }
 DEFAULT_LAYOUT = 'spring' # networkx default
 # PATH = app.config.get('data_path') #"../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
@@ -630,8 +630,8 @@ def get_graph(from_index=False):
     for (graph_id, node) in pyvis_net.node_map.items():
         # position
         v_id = node['vertex_id']
-        node['x'] = vertex_pos[v_id]['x'] * 1500 # scaling necessary for x,y position to work
-        node['y'] = vertex_pos[v_id]['y'] * 1500
+        node['x'] = vertex_pos[v_id]['x'] * LAYOUT_OPTIONS[settings[LAYOUT]]['scale'] # scaling necessary for x,y position to work
+        node['y'] = vertex_pos[v_id]['y'] * LAYOUT_OPTIONS[settings[LAYOUT]]['scale']
 
         # overwrite incorrect neighbor color (leftover from prev degree)
         if node['color'] == NEIGHBOR_COLOR and settings[CLICKED_NODE] not in nx_graph.nodes:
