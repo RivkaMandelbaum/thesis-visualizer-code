@@ -34,6 +34,7 @@ BARNES_HUT = 'barnes-hut'
 FORCE_ATLAS_2BASED = 'force-atlas'
 REPULSION = 'repulsion'
 HIERARCHICAL_REPULSION = 'hrepulsion'
+VALID_SOLVERS = [BARNES_HUT, FORCE_ATLAS_2BASED, REPULSION, HIERARCHICAL_REPULSION]
 
 # layout options
 LAYOUT_OPTIONS = {
@@ -269,6 +270,9 @@ def get_settings(request, from_index=False):
     # find the solver
     solver = request.args.get(SOLVER)
     if solver is None:
+        solver = request.cookies.get(SOLVER)
+    if solver not in VALID_SOLVERS:
+        print("Invalid solver: " + solver)
         solver = BARNES_HUT
     settings[SOLVER] = solver
 
@@ -311,6 +315,8 @@ def set_graph_cookies(response, settings):
     elif settings[SHOW_INCOMING]:
         show_option_cookie = SHOW_NODES_INCOMING
     response.set_cookie(SHOW_OPTION, show_option_cookie)
+
+    response.set_cookie(SOLVER, settings[SOLVER])
 
 def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
