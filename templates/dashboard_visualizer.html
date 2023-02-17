@@ -88,7 +88,7 @@
         </div>
     </div>
     <div id="search-pane" class="sidebar-pane">
-      <input type="number" placeholder="Find Node By Vertex ID" min={{find_min}} max={{find_max}}>
+      <input type="number" id="find-by" placeholder="Find Node By Vertex ID" min={{find_min}} max={{find_max}}>
     </div>
   </aside>
   <main class="flex-fill">
@@ -193,6 +193,28 @@
         validRadioValue = event;
       }
       getGraph(false, validRadioValue);
+    }
+
+    function findNodeGetGraph(event) {
+      $("#find-by").css("background-color", "");
+
+      let validVertex = false;
+      for (let nodeId in nodes.get({ returnType: "Object" })) {
+        if (nodes.get(nodeId)['vertex_id'] == $('#find-by').val()) {
+          if(nodeId[0] == 'n') {
+            document.getElementById('clicked-node-input').value = nodeId;
+            validVertex = true;
+          }
+        }
+      }
+
+      if (validVertex) {
+        getGraph();
+      }
+      else {
+        $("#find-by").css("background-color", "#ffdddd");
+      }
+
     }
 
     function getGraph(from_click=false, radioEvent="") {
@@ -323,6 +345,7 @@
       $('#solver').on('change', getGraph);
       $('#seed').on('input', getGraph);
       $('#layout').on('change', getGraph);
+      $('#find-by').on('change', findNodeGetGraph);
     }
     $('document').ready(setup);
   </script>
