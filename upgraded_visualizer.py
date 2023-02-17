@@ -277,7 +277,6 @@ def get_settings(request, from_index=False):
     if solver is None:
         solver = request.cookies.get(SOLVER)
     if solver not in VALID_SOLVERS.keys():
-        print("Invalid solver: " + solver)
         solver = BARNES_HUT
     settings[SOLVER] = solver
 

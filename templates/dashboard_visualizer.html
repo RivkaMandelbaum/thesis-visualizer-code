@@ -177,6 +177,17 @@
     }
 
     function validateEnabledSettingsGetGraph(event) {
+      // degree input color
+      $("#degree").css("background-color", "");
+
+      const currDegree = parseInt($('#degree').val());
+      const max = parseInt($('#degree').attr('max'));
+      const min = parseInt($('#degree').attr('min'));
+      if (currDegree > max || currDegree < min)  {
+        $("#degree").css("background-color", "#ffdddd");
+      }
+
+      // radio buttons
       let validRadioValue = $('#show-radio-all').val();
       if (validateEnabledSettings()) {
         validRadioValue = event;
