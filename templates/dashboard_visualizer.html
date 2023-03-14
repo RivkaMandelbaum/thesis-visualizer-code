@@ -175,6 +175,9 @@
     let graphRequest = null;
 
     function validateEnabledSettings() {
+      // find node by input box size
+      $('#find-by').css('width', ($('#find-by').attr('placeholder').length + 2) * 8);
+
       // seed
       if ($('#layout').find(":selected").attr('data-seed') == "use-seed") {
         $('#seed').removeAttr("disabled");
