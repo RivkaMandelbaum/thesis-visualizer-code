@@ -118,7 +118,11 @@
       $('#mynetwork').html(response);
 
       // validations
-      validateEnabledSettings();
+      console.log('post load validation');
+      let validClickedNode = validateEnabledSettings();
+      if (!validClickedNode) {
+        clickedNodeUpdateRequest();
+      }
       $('#seed').attr("placeholder", $('#seed').val());
       $('#seed').val('');
     }
@@ -141,6 +145,34 @@
         )
     }
 
+    function handleClickedNodeUpdateResponse(clickedNode) {
+     document.getElementById("clicked-node-input").value = clickedNode;
+     validateEnabledSettings();
+    }
+
+    function clickedNodeUpdateRequest() {
+      /* send a request to update the clicked node to reflect the
+        same vertex in the new degree/trial_maker_id */
+        let degree = encodeURIComponent($('#degree').val());
+        let exp = (document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('exp='))
+          ?.split('=')[1]);
+        let url = '/updateclickednode?graph_id=' + encodeURIComponent(document.getElementById("clicked-node-input").value) + '&degree=' + degree + '&trial_maker_id=' + exp;
+
+        if (graphRequest != null) {
+          graphRequest.abort();
+        }
+        graphRequest = $.ajax(
+          {
+            type: 'GET',
+            url: url,
+            success: handleClickedNodeUpdateResponse,
+            error: () => { document.getElementById("clicked-node-input").value = ""; }
+          }
+        )
+    }
+
     let graphRequest = null;
 
     function validateEnabledSettings() {
@@ -159,12 +191,11 @@
       if (nodes.get(clickedNode) == null) {
         // clicked node was from a previous degree or trial maker id
         // or a node has not yet been clicked on
-        $('#clicked-node-input').prop('value', '');
         $('#show-radio-outgoing').prop('disabled', true);
         $('#show-radio-incoming').prop('disabled', true);
         $('#show-radio-connected').prop('disabled', true);
         $('#show-radio-all').prop('checked', true);
-
+        console.log('invalid clicked node');
         getContent();
       } else {
         $('#show-radio-outgoing').prop('disabled', false);
@@ -172,7 +203,8 @@
         $('#show-radio-connected').prop('disabled', false);
         radioValid = true;
       }
-
+      console.log('radio valid: ');
+      console.log(radioValid);
       return radioValid;
     }
 
@@ -189,10 +221,14 @@
 
       // radio buttons
       let validRadioValue = $('#show-radio-all').val();
-      if (validateEnabledSettings()) {
+      let validClickedNode = validateEnabledSettings();
+      console.log(validClickedNode);
+      if (validClickedNode) {
         validRadioValue = event;
+      } else {
+        clickedNodeUpdateRequest();
       }
-      getGraph(false, validRadioValue);
+      getGraph(false, validRadioValue, !validClickedNode);
     }
 
     function findNodeGetGraph(event) {
@@ -217,7 +253,7 @@
 
     }
 
-    function getGraph(from_click=false, radioEvent="") {
+    function getGraph(fromClick=false, radioEvent="", updateClickedNode=false) {
       // get name value pairs for url
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
@@ -234,11 +270,13 @@
         showOption = encodeURIComponent(radioEvent.target.value);
       }
 
+      updateClickedNode = encodeURIComponent(updateClickedNode);
+
       // when called by a click, check for conditions where shouldn't reload
-      if (from_click && typeof from_click != 'object') {
+      if (fromClick && typeof fromClick != 'object') {
         // info was clicked on
-        let is_info = (clickedNode[0] === "i");
-        if (is_info) {
+        let isInfo = (clickedNode[0] === "i");
+        if (isInfo) {
           console.log("Info: not reloading graph");
           setCookieRequest(clickedNode);
           return
@@ -277,7 +315,8 @@
       let url = '/getgraph?clicked-node=' + clickedNode
                   + '&degree=' + degree +  '&layout=' + layout
                   + '&seed=' + seed + '&show-infos=' + showInfos
-                  + '&show-option=' + showOption + '&solver=' + solver;
+                  + '&show-option=' + showOption + '&solver=' + solver
+                  + '&update-clicked-node=' + updateClickedNode;
 
       if (graphRequest != null) {
         graphRequest.abort();
@@ -294,7 +333,7 @@
 
     let contentRequest = null;
 
-    function getContent(from_click=false) {
+    function getContent(fromClick=false) {
       // get relevant name-value pairs for url
       let exp = (document.cookie
         .split('; ')
@@ -310,7 +349,7 @@
       clickedNode = encodeURIComponent(clickedNode);
 
       // avoid double clicks
-      if (from_click && typeof from_click != 'object') {
+      if (fromClick && typeof fromClick != 'object') {
         let clickedCookie = (document.cookie
           .split('; ')
           .find((row) => row.startsWith('clicked-node='))

@@ -29,6 +29,8 @@ SHOW_NODES_OUTGOING = 'outgoing'
 SHOW_NODES_CONNECTED = 'connected'
 SHOW_OPTION = 'show-option'
 
+UPDATE_CLICKED_NODE = 'update-clicked-node'
+
 # solver
 BARNES_HUT = 'barnes-hut'
 FORCE_ATLAS_2BASED = 'force-atlas'
@@ -206,6 +208,43 @@ def process_data(path):
 
     processing_done = True
 
+def update_clicked_node(graph_id, degree, trial_maker_id):
+    if graph_id == "":
+        print("graph_id was empty string")
+        return ""
+
+    clicked_id, clicked_is_info = from_graph_id(graph_id)
+    trial_data = node_data_by_trial_maker
+    if clicked_is_info: # treat infos as their parent nodes
+        try:
+            info_data = info_data_by_trial_maker[trial_maker_id]
+            info = info_data[info_data["id"] == clicked_id]
+            clicked_id = info["origin_id"].values[0]
+        except:
+            print("Failed to convert info to parent node in update_clicked_node.")
+            return ""
+
+    if trial_maker_id not in trial_data.keys():
+        return ""
+    else:
+        trial_data = trial_data[trial_maker_id]
+
+    try:
+        print(clicked_id)
+        vertex_id = trial_data[trial_data["id"] == clicked_id]["vertex_id"].values[0]
+        vertex_id = str(float(vertex_id))
+
+        degree_nodes = trial_data[trial_data["degree"] == degree]
+        new_node = degree_nodes[degree_nodes["vertex_id"] == vertex_id]
+        new_node_id = int(new_node["id"].values[0])
+
+        new_clicked_id = to_graph_id(new_node_id, False)
+        return new_clicked_id
+    except Exception as ex:
+        print("Failed to find correct node in update_clicked_node")
+        print(str(ex))
+        return ""
+
 def get_settings(request, from_index=False):
     ''' Get settings from the request, or use correct defaults.
         Must be run after process_data() so that the trial_maker_id validation works properly.
@@ -227,12 +266,6 @@ def get_settings(request, from_index=False):
 
     settings = {}
 
-    # get clicked node id
-    clicked_node = request.args.get(CLICKED_NODE)
-    if clicked_node is None:
-        clicked_node = request.cookies.get(CLICKED_NODE)
-    settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
-
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
     if exp is None or exp not in node_data_by_trial_maker.keys():
@@ -248,6 +281,17 @@ def get_settings(request, from_index=False):
         else:
             degree = degree_cookie
     settings[DEGREE] = float(degree)
+
+    # get clicked node id
+    clicked_node = request.args.get(CLICKED_NODE)
+    if clicked_node is None:
+        clicked_node = request.cookies.get(CLICKED_NODE)
+
+    if request.args.get(UPDATE_CLICKED_NODE) == "true":
+        clicked_node = update_clicked_node(clicked_node, settings[DEGREE], settings[EXP])
+    else:
+        print('update clicked node was: ' + str(request.args.get(UPDATE_CLICKED_NODE)))
+    settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
 
     # check whether show infos is on, convert to boolean
     if from_index:
@@ -540,6 +584,8 @@ def generate_graph(graph_settings):
 #----------------------------- Routes --------------------------------
 @app.route('/setclickednode', methods=['GET'])
 def set_clicked_node():
+    """ Sets clicked_node cookie.
+    """
     response = make_response('')
 
     clicked_node = request.args.get('id')
@@ -549,6 +595,22 @@ def set_clicked_node():
     response.set_cookie(CLICKED_NODE, clicked_node)
 
     return response
+
+@app.route('/updateclickednode', methods=['GET'])
+def update_clicked_node_route():
+    """ Given a graph_id, degree, and trial_maker_id, finds the vertex
+    associated with the graph_id and returns that vertex in the given degree
+    and trial_maker_id, or "" if not found.
+    """
+    graph_id = request.args.get('graph_id')
+    degree = request.args.get('degree')
+    trial_maker_id = request.args.get('trial_maker_id')
+    # if any are still None, the args are invalid, so return ""
+    if graph_id is None or degree is None or trial_maker_id is None:
+        return make_response("")
+
+    new_node_id = update_clicked_node(graph_id, degree, trial_maker_id)
+    return make_response(new_node_id)
 
 @app.route('/getcontent', methods=['GET'])
 def get_content():
