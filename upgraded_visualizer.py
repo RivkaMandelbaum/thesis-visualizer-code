@@ -590,7 +590,9 @@ def set_clicked_node():
     response = make_response('')
 
     clicked_node = request.args.get('id')
-    if from_graph_id(clicked_node)[1] is None:
+    if clicked_node == "null":
+        clicked_node = ""
+    elif from_graph_id(clicked_node)[1] is None:
         raise Exception("Error in graph id to set.")
 
     response.set_cookie(CLICKED_NODE, clicked_node)

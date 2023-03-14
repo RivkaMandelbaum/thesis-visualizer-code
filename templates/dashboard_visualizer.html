@@ -281,12 +281,6 @@
           .find((row) => row.startsWith('clicked-node='))
           ?.split('=')[1]);
 
-        if (clickedNode === clickedCookie) {
-          console.log("Double click: not reloading graph");
-          setCookieRequest(clickedNode);
-          return
-        }
-
         // previously clicked node was an info and this is its origin
         if (clickedCookie[0] === "i") {
           let nodeData = nodes.get(clickedCookie);
@@ -301,6 +295,14 @@
               }
             }
           }
+        }
+
+        if (clickedNode === clickedCookie) {
+          // deselect
+          console.log("Double click: deselecting node");
+          document.getElementById("clicked-node-input").value = "";
+          clickedNode = encodeURIComponent("");
+          setCookieRequest("null");
         }
     }
 
