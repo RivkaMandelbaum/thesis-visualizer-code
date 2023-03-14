@@ -223,7 +223,7 @@
       } else {
         clickedNodeUpdateRequest();
       }
-      getGraph(false, validRadioValue, !validClickedNode);
+      getGraph(false, validRadioValue);
     }
 
     function findNodeGetGraph(event) {
@@ -248,7 +248,7 @@
 
     }
 
-    function getGraph(fromClick=false, radioEvent="", updateClickedNode=false) {
+    function getGraph(fromClick=false, radioEvent="") {
       // get name value pairs for url
       let clickedNode = encodeURIComponent(document.getElementById("clicked-node-input").value);
 
@@ -264,8 +264,6 @@
       if (typeof radioEvent != 'string'){ // use radio button if valid
         showOption = encodeURIComponent(radioEvent.target.value);
       }
-
-      updateClickedNode = encodeURIComponent(updateClickedNode);
 
       // when called by a click, check for conditions where shouldn't reload
       if (fromClick && typeof fromClick != 'object') {
@@ -310,8 +308,7 @@
       let url = '/getgraph?clicked-node=' + clickedNode
                   + '&degree=' + degree +  '&layout=' + layout
                   + '&seed=' + seed + '&show-infos=' + showInfos
-                  + '&show-option=' + showOption + '&solver=' + solver
-                  + '&update-clicked-node=' + updateClickedNode;
+                  + '&show-option=' + showOption + '&solver=' + solver;
 
       if (graphRequest != null) {
         graphRequest.abort();

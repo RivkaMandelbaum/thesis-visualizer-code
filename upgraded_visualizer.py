@@ -8,7 +8,7 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 from flask import Flask, render_template, make_response, request
-from numpy import random
+from numpy import True_, random
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
@@ -28,8 +28,6 @@ SHOW_NODES_INCOMING = 'incoming'
 SHOW_NODES_OUTGOING = 'outgoing'
 SHOW_NODES_CONNECTED = 'connected'
 SHOW_OPTION = 'show-option'
-
-UPDATE_CLICKED_NODE = 'update-clicked-node'
 
 # solver
 BARNES_HUT = 'barnes-hut'
@@ -231,13 +229,15 @@ def update_clicked_node(graph_id, degree, trial_maker_id):
         trial_data = trial_data[trial_maker_id]
 
     try:
-        # print('Updating clicked ID for node with ID: ' + str(clicked_id))
-        vertex_id = trial_data[trial_data["id"] == clicked_id]["vertex_id"].values[0]
-        vertex_id = float(vertex_id)
         degree = float(degree)
-        # print("Found vertex ID: %f" % vertex_id)
+        node = trial_data[trial_data["id"] == clicked_id]
+        if node["degree"].values[0] == degree: #TODO tmid validation
+            # the given graph_id belongs to the current degree and does
+            # not need to be updated
+            return graph_id
+
+        vertex_id = float(node["vertex_id"].values[0])
         degree_nodes = trial_data[trial_data["degree"] == degree]
-        # print("Filtering for degree: " + str(degree) + ", found %d rows" % len(degree_nodes))
         new_node = degree_nodes[degree_nodes["vertex_id"] == vertex_id]
         new_node_id = int(new_node["id"].values[0])
 
@@ -290,10 +290,8 @@ def get_settings(request, from_index=False):
     if clicked_node is None:
         clicked_node = request.cookies.get(CLICKED_NODE)
 
-    if request.args.get(UPDATE_CLICKED_NODE) == "true":
+    if True:
         clicked_node = update_clicked_node(clicked_node, settings[DEGREE], settings[EXP])
-    else:
-        print('update clicked node was: ' + str(request.args.get(UPDATE_CLICKED_NODE)))
     settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
 
     # check whether show infos is on, convert to boolean
