@@ -44,7 +44,7 @@ VALID_SOLVERS = {
 # layout options
 LAYOUT_OPTIONS = {
     'circular': {'name': 'Circular Layout', 'has_seed': False, 'func': nx.circular_layout, 'scale': 500},
-    'kamada-kawai': {'name': 'Kamada-Kawai Layout', 'has_seed': False, 'func': nx.kamada_kawai_layout, 'scale': 750},
+    'kamada-kawai': {'name': 'Kamada-Kawai Layout', 'has_seed': False, 'func': nx.kamada_kawai_layout, 'scale': 1500},
     'random': {'name': 'Random Layout', 'has_seed': True, 'func': nx.random_layout, 'scale': 1500},
     'shell': {'name': 'Shell Layout', 'has_seed': False, 'func': nx.shell_layout, 'scale': 500},
     'spectral': {'name': 'Spectral Layout', 'has_seed': False, 'func': nx.spectral_layout, 'scale': 1500},
@@ -227,6 +227,12 @@ def get_settings(request, from_index=False):
 
     settings = {}
 
+    # get clicked node id
+    clicked_node = request.args.get(CLICKED_NODE)
+    if clicked_node is None:
+        clicked_node = request.cookies.get(CLICKED_NODE)
+    settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
+
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
     if exp is None or exp not in node_data_by_trial_maker.keys():
@@ -242,44 +248,6 @@ def get_settings(request, from_index=False):
         else:
             degree = degree_cookie
     settings[DEGREE] = float(degree)
-
-    # get clicked node id
-    clicked_node = request.args.get(CLICKED_NODE)
-    if clicked_node is None:
-        clicked_node = request.cookies.get(CLICKED_NODE)
-
-    # change the node id to the one in the correct degree, if relevant
-    clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
-    clicked_data = info_data_by_trial_maker[exp] if clicked_is_info else node_data_by_trial_maker[exp]
-    clicked_node_row =  clicked_data[clicked_data["id"] == clicked_graph_id]
-
-    if len(clicked_node_row) != 1:
-        print("Error retrieving clicked node.")
-        clicked_node = None
-    else:
-        # if an info was selected, and then degree changed, we'll highlight
-        # the parent vertex in the new degree
-        if clicked_is_info:
-            try:
-                clicked_graph_id = clicked_node_row["origin_id"].values[0]
-                clicked_is_info = False
-                clicked_data = node_data_by_trial_maker[exp]
-                clicked_node_row =  clicked_data[clicked_data["id"] == clicked_graph_id]
-            except:
-                print("Error retrieving clicked info.")
-                clicked_node = None
-
-        try:
-            if clicked_node_row["degree"].values[0] != settings[DEGREE]:
-                clicked_vid = clicked_node_row["vertex_id"].values[0]
-                clicked_data = clicked_data[clicked_data["vertex_id"] == clicked_vid]
-                clicked_data = clicked_data[clicked_data["degree"] == settings[DEGREE]]
-                clicked_node = to_graph_id(clicked_data["id"].values[0], clicked_is_info)
-        except:
-            print("Error converting clicked node.")
-            clicked_node = None
-
-    settings[CLICKED_NODE] = clicked_node if (clicked_node is not None) else ''
 
     # check whether show infos is on, convert to boolean
     if from_index:
