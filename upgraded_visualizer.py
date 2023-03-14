@@ -209,8 +209,9 @@ def process_data(path):
     processing_done = True
 
 def update_clicked_node(graph_id, degree, trial_maker_id):
+    # the point of this is to update stale clicked nodes
+    # if the node id is "" there was either an error or nothing has been set
     if graph_id == "":
-        print("graph_id was empty string")
         return ""
 
     clicked_id, clicked_is_info = from_graph_id(graph_id)
@@ -230,11 +231,13 @@ def update_clicked_node(graph_id, degree, trial_maker_id):
         trial_data = trial_data[trial_maker_id]
 
     try:
-        print(clicked_id)
+        # print('Updating clicked ID for node with ID: ' + str(clicked_id))
         vertex_id = trial_data[trial_data["id"] == clicked_id]["vertex_id"].values[0]
-        vertex_id = str(float(vertex_id))
-
+        vertex_id = float(vertex_id)
+        degree = float(degree)
+        # print("Found vertex ID: %f" % vertex_id)
         degree_nodes = trial_data[trial_data["degree"] == degree]
+        # print("Filtering for degree: " + str(degree) + ", found %d rows" % len(degree_nodes))
         new_node = degree_nodes[degree_nodes["vertex_id"] == vertex_id]
         new_node_id = int(new_node["id"].values[0])
 

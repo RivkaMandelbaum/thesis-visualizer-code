@@ -118,7 +118,6 @@
       $('#mynetwork').html(response);
 
       // validations
-      console.log('post load validation');
       let validClickedNode = validateEnabledSettings();
       if (!validClickedNode) {
         clickedNodeUpdateRequest();
@@ -195,7 +194,6 @@
         $('#show-radio-incoming').prop('disabled', true);
         $('#show-radio-connected').prop('disabled', true);
         $('#show-radio-all').prop('checked', true);
-        console.log('invalid clicked node');
         getContent();
       } else {
         $('#show-radio-outgoing').prop('disabled', false);
@@ -203,8 +201,6 @@
         $('#show-radio-connected').prop('disabled', false);
         radioValid = true;
       }
-      console.log('radio valid: ');
-      console.log(radioValid);
       return radioValid;
     }
 
@@ -222,7 +218,6 @@
       // radio buttons
       let validRadioValue = $('#show-radio-all').val();
       let validClickedNode = validateEnabledSettings();
-      console.log(validClickedNode);
       if (validClickedNode) {
         validRadioValue = event;
       } else {
