@@ -283,26 +283,32 @@
       }
 
 
-      // when called by a click, check for conditions where shouldn't reload
+      // when called by a click, check for special cases
       if (fromClick && typeof fromClick != 'object') {
-        // info was clicked on
-        let isInfo = (clickedNode[0] === "i");
-        if (isInfo) {
-          console.log("Info: not reloading graph");
-          setCookieRequest(clickedNode);
-          if ($('#details-content').text().includes("No content to display")) {
-            getContent();
-          }
-          return
-        }
 
-        // node was already clicked on
         let clickedCookie = (document.cookie
           .split('; ')
           .find((row) => row.startsWith('clicked-node='))
           ?.split('=')[1]);
 
-        // previously clicked node was an info and this is its origin
+        // case 1: info was clicked on
+        let isInfo = (clickedNode[0] === "i");
+        if (isInfo) {
+          console.log("Info: not reloading graph");
+
+          // populate content box if necessary
+          if ($('#details-content').text().includes("No content to display")) {
+            getContent();
+          }
+
+          // set cookie (for child of previously selected node only)
+          if ("n" + nodes.get(clickedNode)["origin_id"] == clickedCookie) {
+            setCookieRequest(clickedNode);
+          }
+          return
+        }
+
+        // case 2: clicked on node -> child -> original node again
         if (clickedCookie[0] === "i") {
           let nodeData = nodes.get(clickedCookie);
           if (nodeData != null) {
@@ -318,6 +324,7 @@
           }
         }
 
+        // case 3: node was already clicked on and should be deselected
         if (clickedNode === clickedCookie) {
           // deselect
           console.log("Double click: deselecting node");
