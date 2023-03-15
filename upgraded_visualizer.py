@@ -391,7 +391,7 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
     # filter data
     node_data = node_data_by_trial_maker[trial_maker_id]
     info_data = info_data_by_trial_maker[trial_maker_id]
-    clicked_graph_id, clicked_is_info = from_graph_id(clicked_node)
+    clicked_id, clicked_is_info = from_graph_id(clicked_node)
 
     # extract vertex id
     vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
@@ -405,22 +405,21 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
         node_color = CLICKED_COLOR
         node_is_hidden = False
     # check if node's child info was clicked on
-    elif clicked_is_info and info_data[info_data["id"] == clicked_graph_id]["origin_id"].values[0] == node_id: # node's info was clicked on
-        node_color = CLICKED_COLOR
-        node_is_hidden = False
+    elif clicked_is_info:
+        if info_data[info_data["id"] == clicked_id]["origin_id"].values[0] == node_id: # node's info was clicked on
+            node_color = CLICKED_COLOR
+            node_is_hidden = False
     # check if node's neighbor was clicked on (connected either direction)
-    elif clicked_graph_id != '':
+    elif clicked_id != '':
         incoming_to_curr = node_data[node_data["id"] == from_graph_id(node_id)[0]]["dependent_vertex_ids"].values[0].strip('][').split(', ')
-        if clicked_graph_id == '':
-            print('empty string from clicked graph id')
-        clicked_vertex = str(int(node_data[node_data["id"] == clicked_graph_id]["vertex_id"].values[0]))
+        clicked_vertex = str(int(node_data[node_data["id"] == clicked_id]["vertex_id"].values[0]))
 
         if clicked_vertex in incoming_to_curr:
             node_color = NEIGHBOR_COLOR
             if show_outgoing:
                 node_is_hidden = False
 
-        incoming_to_clicked = node_data[node_data["id"] == clicked_graph_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
+        incoming_to_clicked = node_data[node_data["id"] == clicked_id]["dependent_vertex_ids"].values[0].strip('][').split(', ')
 
         if str(int(vert_id)) in incoming_to_clicked:
             node_color = NEIGHBOR_COLOR
