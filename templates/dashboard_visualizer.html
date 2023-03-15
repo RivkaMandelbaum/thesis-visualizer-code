@@ -268,6 +268,21 @@
         showOption = encodeURIComponent(radioEvent.target.value);
       }
 
+      // clear content box when info was selected and show infos turns off
+      if (!$('#show-infos').is(":checked")) {
+        if (clickedNode[0] === "i") {
+          let infosCookie = (document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('show-infos='))
+          ?.split('=')[1]);
+
+          if (infosCookie === "true") {
+            handleContentResponse("No content to display.");
+          }
+        }
+      }
+
+
       // when called by a click, check for conditions where shouldn't reload
       if (fromClick && typeof fromClick != 'object') {
         // info was clicked on
@@ -275,6 +290,9 @@
         if (isInfo) {
           console.log("Info: not reloading graph");
           setCookieRequest(clickedNode);
+          if ($('#details-content').text().includes("No content to display")) {
+            getContent();
+          }
           return
         }
 
