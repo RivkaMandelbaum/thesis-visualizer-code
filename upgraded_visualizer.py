@@ -52,7 +52,6 @@ LAYOUT_OPTIONS = {
     'spring': {'name': 'Spring Layout', 'has_seed': True, 'func': nx.spring_layout, 'scale': 1500}
 }
 DEFAULT_LAYOUT = 'spring' # networkx default
-# PATH = app.config.get('data_path') #"../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
 
 # settings dict
 CLICKED_NODE = 'clicked-node'
@@ -68,16 +67,14 @@ GRAPH_SETTINGS = [CLICKED_NODE, EXP, DEGREE, SHOW_INFOS, SHOW_OUTGOING, SHOW_INC
 
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
-node_data_by_trial_maker = {} # TODO fix
-info_data_by_trial_maker = {} # TODO fix
 vertex_pos = None #TODO fix
-processing_done = False
 
 class ClickedNodeException(Exception):
     "Clicked node or info not present in data"
     pass
 
 app = Flask(__name__, template_folder='./templates')
+PATH = app.config.get('data_path')
 
 #-----------------------------------------------------------------------
 #----------------------------  Functions  ------------------------------
@@ -122,6 +119,7 @@ def get_content_list(exp, id):
     in the content box. Return as array of strings. Each array element will be displayed on its own line.
     '''
     # validation
+    node_data_by_trial_maker = process_node_data()
     if exp not in node_data_by_trial_maker.keys():
         return ["An error has occurred. Try reloading the page."]
     if id in [None, '']:
@@ -133,7 +131,7 @@ def get_content_list(exp, id):
     if not is_info:
         data = node_data_by_trial_maker[exp]
     else:
-        data = info_data_by_trial_maker[exp]
+        data = process_info_data()[exp]
 
     # format content and return
     dict_data = data[data["id"] == graph_id].squeeze().to_dict()
@@ -156,22 +154,16 @@ def create_label(id):
     return label
 
 #---------------------- Complex helper functions --------------------------
-def process_data(path):
-    """ Reads the CSVs produced by exporting data into data structures
-    that can be used by the visualizer. Specifically, fills in global
-    dicts node_data_by_trial_maker and info_data_by_trial_maker, so that
-    each one has trial_maker_id:Dataframe pairs. node_data_by_trial_maker
-    contains filtered data from node.csv, and info_data_by_trial_maker
-    contains filtered data from info.csv.
+def process_info_data():
+    """ Processes the data in info.csv into data structures
+    that can be used by the visualizer. Specifically, returns a dictionary with trial_maker_id as keys, Dataframes as pairs, using data from info.csv.
     """
-    global processing_done #TODO: Development only!
-    if processing_done:
-        return
+    if PATH[-1] != "/":
+        PATH += "/"
 
     # read CSVs
-    nodes = pd.read_csv(path + "node.csv", low_memory=False)
-    networks = pd.read_csv(path + "network.csv", low_memory=False)
-    infos = pd.read_csv(path + "info.csv")
+    networks = pd.read_csv(PATH + "network.csv", low_memory=False)
+    infos = pd.read_csv(PATH + "info.csv")
 
    # filter networks: role = experiment
     network_data = networks
@@ -179,7 +171,43 @@ def process_data(path):
 
     # fill in node data and info data, for each trial_maker_id
     trial_maker_ids = network_data["trial_maker_id"].unique()
+    info_data_by_trial_maker = {}
+    for trial_maker_id in trial_maker_ids:
+        # find relevant network ids for this trial_maker_id
+        network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
+        experiment_network_ids = list(network_data['id'].to_numpy())
 
+        # filter infos like nodes
+        info_data = infos
+        info_data = info_data[infos["type"] == "graph_chain_trial"]
+        info_data = info_data[info_data["network_id"].isin(experiment_network_ids)]
+        try:
+            info_data = info_data.drop(COLS_TO_DROP, axis="columns")
+        except KeyError:
+            print("Data does not contain property1-property5")
+
+        # add filtered Dataframes to the global dicts
+        info_data_by_trial_maker[trial_maker_id] = info_data
+    return info_data_by_trial_maker
+
+def process_node_data():
+    """ Processes the data in node.csv into data structures
+    that can be used by the visualizer. Specifically, returns a dictionary with trial_maker_id as keys, Dataframes as pairs, using data from node.csv.
+    """
+    if PATH[-1] != "/":
+        PATH += "/"
+
+    # read CSVs
+    networks = pd.read_csv(PATH + "network.csv", low_memory=False)
+    nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
+
+   # filter networks: role = experiment
+    network_data = networks
+    network_data = network_data[network_data["role"] == "experiment"]
+
+    # fill in node data for each trial_maker_id
+    trial_maker_ids = network_data["trial_maker_id"].unique()
+    node_data_by_trial_maker = {}
     for trial_maker_id in trial_maker_ids:
         # find relevant network ids for this trial_maker_id
         network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
@@ -192,19 +220,9 @@ def process_data(path):
         node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids", "failed"]]
         node_data = node_data.sort_values(["network_id", "degree"])
 
-        # filter infos like nodes
-        info_data = infos
-        info_data = info_data[infos["type"] == "graph_chain_trial"]
-        try:
-            info_data = info_data.drop(COLS_TO_DROP, axis="columns")
-        except KeyError:
-            print("Data does not contain property1-property5")
-
-        # add filtered Dataframes to the global dicts
         node_data_by_trial_maker[trial_maker_id] = node_data
-        info_data_by_trial_maker[trial_maker_id] = info_data
 
-    processing_done = True
+    return node_data_by_trial_maker
 
 def update_clicked_node(graph_id, degree, trial_maker_id):
     # the point of this is to update stale clicked nodes
@@ -213,10 +231,10 @@ def update_clicked_node(graph_id, degree, trial_maker_id):
         return ""
 
     clicked_id, clicked_is_info = from_graph_id(graph_id)
-    trial_data = node_data_by_trial_maker
+    trial_data = process_node_data()
     if clicked_is_info: # treat infos as their parent nodes
         try:
-            info_data = info_data_by_trial_maker[trial_maker_id]
+            info_data = process_info_data()[trial_maker_id]
             info = info_data[info_data["id"] == clicked_id]
             clicked_id = info["origin_id"].values[0]
         except:
@@ -264,8 +282,9 @@ def get_settings(request, from_index=False):
             seed (int)
     '''
     # check that data has been processed
+    node_data_by_trial_maker = process_node_data()
     if len(list(node_data_by_trial_maker.keys())) == 0:
-        raise Exception("Settings cannot be found before data is processed.")
+        raise Exception("Settings cannot be found if there are no trial_maker_ids.")
 
     settings = {}
 
@@ -367,12 +386,13 @@ def set_graph_cookies(response, settings):
 
     response.set_cookie(SOLVER, settings[SOLVER])
 
-def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_outgoing, show_incoming):
+def add_node_to_networkx(G, degree, node_data, info_data, node_id, clicked_node, show_outgoing, show_incoming):
     """ Adds node to networkx DiGraph.
         Arguments:
             G: networkx DiGraph
             degree: float
-            trial_maker_id: string
+            node_data: Dataframe
+            info_data: Dataframe
             node_id: int
             clicked_node: string (in graph_id format)
             show_outgoing: bool
@@ -389,8 +409,6 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
             hidden
     """
     # filter data
-    node_data = node_data_by_trial_maker[trial_maker_id]
-    info_data = info_data_by_trial_maker[trial_maker_id]
     clicked_id, clicked_is_info = from_graph_id(clicked_node)
 
     # extract vertex id
@@ -448,12 +466,13 @@ def add_node_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_
         physics=False
         )
 
-def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show_infos):
+def add_infos_to_networkx(G, degree, node_data, info_data, node_id, clicked_node, show_infos):
     """ Adds infos associated with given node_id to networkx DiGraph, and edges.
         Arguments:
             G: networkx DiGraph
             degree: float
-            trial_maker_id: string
+            node_data: Dataframe
+            info_data: Dataframe
             node_id: int
             clicked_node: string (in graph_id format)
             show_infos: bool
@@ -471,8 +490,6 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
             hidden      (bool, depends on settings)
     """
     # get associated info data
-    node_data = node_data_by_trial_maker[trial_maker_id]
-    info_data = info_data_by_trial_maker[trial_maker_id]
     node_infos_data = info_data[info_data["origin_id"] == node_id]
 
     if len(node_infos_data) == 1: # process to make compatible format
@@ -532,10 +549,9 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
         )
         G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
 
-def add_edges_to_networkx(G, degree, trial_maker_id, node_id):
+def add_edges_to_networkx(G, degree, node_data, node_id):
     """ Add incoming edges of the given node to G, using dependent_vertex_ids.
     """
-    node_data = node_data_by_trial_maker[trial_maker_id]
     node_id = from_graph_id(node_id)[0]
     deg_nodes = node_data[node_data["degree"] == degree]
 
@@ -567,6 +583,8 @@ def generate_graph(graph_settings):
             raise Exception("Invalid graph settings")
 
     # validation: ensure trial_maker_id is valid
+    node_data_by_trial_maker = process_node_data()
+    info_data_by_trial_maker = process_info_data()
     if graph_settings[EXP] not in node_data_by_trial_maker.keys():
         raise Exception("Invalid trial_maker_id.")
 
@@ -581,6 +599,7 @@ def generate_graph(graph_settings):
 
     # use correct data for that trial_maker_id
     node_data = node_data_by_trial_maker[graph_settings[EXP]]
+    info_data = info_data_by_trial_maker[graph_settings[EXP]]
 
     # create graph
     G = nx.DiGraph()
@@ -588,9 +607,9 @@ def generate_graph(graph_settings):
     # add nodes+edges from node_data to the Graph, and associated infos
     deg_nodes = node_data[node_data["degree"] == graph_settings[DEGREE]]
     for node_id in deg_nodes["id"].values.tolist():
-        add_node_to_networkx(G, graph_settings[DEGREE], graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_OUTGOING], graph_settings[SHOW_INCOMING])
-        add_edges_to_networkx(G, graph_settings[DEGREE], graph_settings[EXP], node_id)
-        add_infos_to_networkx(G, graph_settings[DEGREE], graph_settings[EXP], node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_INFOS])
+        add_node_to_networkx(G, graph_settings[DEGREE], node_data, info_data, node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_OUTGOING], graph_settings[SHOW_INCOMING])
+        add_edges_to_networkx(G, graph_settings[DEGREE], node_data, node_id)
+        add_infos_to_networkx(G, graph_settings[DEGREE], node_data, info_data, node_id, graph_settings[CLICKED_NODE], graph_settings[SHOW_INFOS])
 
     return G
 
@@ -647,15 +666,10 @@ def get_content():
 
 @app.route('/getgraph', methods=['GET'])
 def get_graph(from_index=False):
-    # process data into dicts (global variables)
-    data_path = app.config.get('data_path')
-    if data_path[-1] != "/":
-        data_path += "/"
-    process_data(data_path)
 
     # get the settings
     settings = get_settings(request, from_index=from_index)
-    min_degree = node_data_by_trial_maker[settings[EXP]]["degree"].min()
+    min_degree = process_node_data()[settings[EXP]]["degree"].min()
 
     # create network layout, based on layout generated on minimal degree
     global vertex_pos
@@ -762,6 +776,7 @@ def create_visualizer():
     settings = get_settings(request, from_index=True)
 
     # create values to fill in for page template
+    node_data_by_trial_maker = process_node_data()
     node_data = node_data_by_trial_maker[settings[EXP]]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
