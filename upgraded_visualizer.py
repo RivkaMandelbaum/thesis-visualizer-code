@@ -121,9 +121,9 @@ def get_content_list(exp, id):
     # validation
     graph_id, is_info = from_graph_id(id)
     if not is_info:
-        data = process_node_data()
+        data = process_node_data(PATH)
     else:
-        data = process_info_data()
+        data = process_info_data(PATH)
 
 
     if exp not in data.keys():
@@ -154,16 +154,16 @@ def create_label(id):
     return label
 
 #---------------------- Complex helper functions --------------------------
-def process_info_data():
+def process_info_data(path):
     """ Processes the data in info.csv into data structures
     that can be used by the visualizer. Specifically, returns a dictionary with trial_maker_id as keys, Dataframes as pairs, using data from info.csv.
     """
-    if PATH[-1] != "/":
-        PATH += "/"
+    if path[-1] != "/":
+        path += "/"
 
     # read CSVs
-    networks = pd.read_csv(PATH + "network.csv", low_memory=False)
-    infos = pd.read_csv(PATH + "info.csv")
+    networks = pd.read_csv(path + "network.csv", low_memory=False)
+    infos = pd.read_csv(path + "info.csv")
 
    # filter networks: role = experiment
     network_data = networks
@@ -190,16 +190,16 @@ def process_info_data():
         info_data_by_trial_maker[trial_maker_id] = info_data
     return info_data_by_trial_maker
 
-def process_node_data():
+def process_node_data(path):
     """ Processes the data in node.csv into data structures
     that can be used by the visualizer. Specifically, returns a dictionary with trial_maker_id as keys, Dataframes as pairs, using data from node.csv.
     """
-    if PATH[-1] != "/":
-        PATH += "/"
+    if path[-1] != "/":
+        path += "/"
 
     # read CSVs
-    networks = pd.read_csv(PATH + "network.csv", low_memory=False)
-    nodes = pd.read_csv(PATH + "node.csv", low_memory=False)
+    networks = pd.read_csv(path + "network.csv", low_memory=False)
+    nodes = pd.read_csv(path + "node.csv", low_memory=False)
 
    # filter networks: role = experiment
     network_data = networks
@@ -231,10 +231,10 @@ def update_clicked_node(graph_id, degree, trial_maker_id):
         return ""
 
     clicked_id, clicked_is_info = from_graph_id(graph_id)
-    trial_data = process_node_data()
+    trial_data = process_node_data(PATH)
     if clicked_is_info: # treat infos as their parent nodes
         try:
-            info_data = process_info_data()[trial_maker_id]
+            info_data = process_info_data(PATH)[trial_maker_id]
             info = info_data[info_data["id"] == clicked_id]
             clicked_id = info["origin_id"].values[0]
         except:
@@ -282,7 +282,7 @@ def get_settings(request, from_index=False):
             seed (int)
     '''
     # check that data has been processed
-    node_data_by_trial_maker = process_node_data()
+    node_data_by_trial_maker = process_node_data(PATH)
     if len(list(node_data_by_trial_maker.keys())) == 0:
         raise Exception("Settings cannot be found if there are no trial_maker_ids.")
 
@@ -583,7 +583,7 @@ def generate_graph(graph_settings, node_data_by_trial_maker):
             raise Exception("Invalid graph settings")
 
     # validation: ensure trial_maker_id is valid
-    info_data_by_trial_maker = process_info_data()
+    info_data_by_trial_maker = process_info_data(PATH)
     if graph_settings[EXP] not in node_data_by_trial_maker.keys():
         raise Exception("Invalid trial_maker_id.")
 
@@ -668,7 +668,7 @@ def get_graph(from_index=False):
 
     # get the settings
     settings = get_settings(request, from_index=from_index)
-    node_data_by_trial_maker = process_node_data()
+    node_data_by_trial_maker = process_node_data(PATH)
     min_degree = node_data_by_trial_maker[settings[EXP]]["degree"].min()
 
     # create network layout, based on layout generated on minimal degree
@@ -776,7 +776,7 @@ def create_visualizer():
     settings = get_settings(request, from_index=True)
 
     # create values to fill in for page template
-    node_data_by_trial_maker = process_node_data()
+    node_data_by_trial_maker = process_node_data(PATH)
     node_data = node_data_by_trial_maker[settings[EXP]]
     min_degree = node_data["degree"].min()
     max_degree = node_data["degree"].max()
