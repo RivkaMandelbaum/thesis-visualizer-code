@@ -512,17 +512,6 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
                         info_is_hidden = False
                         info_color = NEIGHBOR_COLOR
 
-        # if parent_node_id == clicked_node: # node was clicked on
-        #     info_color = CLICKED_COLOR
-        # elif info_graph_id == clicked_node: # info was clicked on
-        #     info_color = CLICKED_COLOR
-        # elif clicked_node in G.pred[parent_node_id]:
-        #     info_color = NEIGHBOR_COLOR
-        # if from_graph_id(clicked_node)[1]: # info was clicked
-        #         for parent_neighbor_id in G.pred[parent_node_id]:
-        #             parent_neighbor_info_ids = info_data[info_data["origin_id"] == from_graph_id(parent_neighbor_id)[0]]["id"].values
-        #             if from_graph_id(clicked_node)[0] in parent_neighbor_info_ids:
-        #                 info_color = NEIGHBOR_COLOR
         # color failed nodes (overwrites clicked coloring if relevant)
         if (info_data[info_data["id"] == info_id]["failed"].values[0] == "t"):
             info_color = FAILED_COLOR
