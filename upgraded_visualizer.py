@@ -484,25 +484,45 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
     for _, info in node_infos:
         info_id = int(info["id"])
 
-        is_info=True
+        is_info = True
 
-        # set info visibility (hidden by default)
+        info_graph_id = to_graph_id(info_id, is_info)
+        parent_node_id = to_graph_id(node_id, False)
+
+        # set info visibility (hidden by default) and color
         info_is_hidden = True
-        if show_infos and not G.nodes[to_graph_id(node_id, False)]["hidden"]:
-            # this info was clicked on; this info's parent was clicked on;
-            # or a neighbor of this info's parent was clicked on
-            if to_graph_id(node_id, False) == clicked_node or \
-                to_graph_id(info_id, True) == clicked_node or \
-                clicked_node in G.pred[to_graph_id(node_id, False)]: info_is_hidden = False
-
-        # set node color (clicked/failed)
         info_color = DEFAULT_COLOR
-        if to_graph_id(node_id, False) == clicked_node: # node was clicked on
-            info_color = CLICKED_COLOR
-        elif to_graph_id(info_id, True) == clicked_node: # info was clicked on
-            info_color = CLICKED_COLOR
-        elif clicked_node in G.pred[to_graph_id(node_id, False)]:
-            info_color = NEIGHBOR_COLOR
+        if show_infos and not G.nodes[parent_node_id]["hidden"]:
+            # this info or its parent was clicked on
+            if parent_node_id == clicked_node or \
+                info_graph_id == clicked_node:
+                info_is_hidden = False
+                info_color = CLICKED_COLOR
+
+            # neighboring node was clicked on
+            if clicked_node in G.pred[parent_node_id]:
+                info_is_hidden = False
+                info_color = NEIGHBOR_COLOR
+
+            # neighboring info was clicked on
+            if from_graph_id(clicked_node)[1]: # info was clicked
+                for parent_neighbor_id in G.pred[parent_node_id]:
+                    parent_neighbor_info_ids = info_data[info_data["origin_id"] == from_graph_id(parent_neighbor_id)[0]]["id"].values
+                    if from_graph_id(clicked_node)[0] in parent_neighbor_info_ids:
+                        info_is_hidden = False
+                        info_color = NEIGHBOR_COLOR
+
+        # if parent_node_id == clicked_node: # node was clicked on
+        #     info_color = CLICKED_COLOR
+        # elif info_graph_id == clicked_node: # info was clicked on
+        #     info_color = CLICKED_COLOR
+        # elif clicked_node in G.pred[parent_node_id]:
+        #     info_color = NEIGHBOR_COLOR
+        # if from_graph_id(clicked_node)[1]: # info was clicked
+        #         for parent_neighbor_id in G.pred[parent_node_id]:
+        #             parent_neighbor_info_ids = info_data[info_data["origin_id"] == from_graph_id(parent_neighbor_id)[0]]["id"].values
+        #             if from_graph_id(clicked_node)[0] in parent_neighbor_info_ids:
+        #                 info_color = NEIGHBOR_COLOR
         # color failed nodes (overwrites clicked coloring if relevant)
         if (info_data[info_data["id"] == info_id]["failed"].values[0] == "t"):
             info_color = FAILED_COLOR
@@ -510,7 +530,7 @@ def add_infos_to_networkx(G, degree, trial_maker_id, node_id, clicked_node, show
         vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
 
         G.add_node(
-            to_graph_id(info_id, is_info),
+            info_graph_id,
             color=info_color,
             degree=degree,
             is_info=is_info,
