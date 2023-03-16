@@ -119,19 +119,19 @@ def get_content_list(exp, id):
     in the content box. Return as array of strings. Each array element will be displayed on its own line.
     '''
     # validation
-    node_data_by_trial_maker = process_node_data()
-    if exp not in node_data_by_trial_maker.keys():
+    graph_id, is_info = from_graph_id(id)
+    if not is_info:
+        data = process_node_data()
+    else:
+        data = process_info_data()
+
+
+    if exp not in data.keys():
         return ["An error has occurred. Try reloading the page."]
     if id in [None, '']:
         return ["No content to display."]
 
-    # get the content
-    graph_id, is_info = from_graph_id(id)
-
-    if not is_info:
-        data = node_data_by_trial_maker[exp]
-    else:
-        data = process_info_data()[exp]
+    data = data[exp]
 
     # format content and return
     dict_data = data[data["id"] == graph_id].squeeze().to_dict()
@@ -569,7 +569,7 @@ def add_edges_to_networkx(G, degree, node_data, node_id):
     edge_list = [(to_graph_id(int(dependent_node), is_info), to_graph_id(int(node_id), is_info)) for dependent_node in dependent_nodes]
     G.add_edges_from(edge_list)
 
-def generate_graph(graph_settings):
+def generate_graph(graph_settings, node_data_by_trial_maker):
     ''' Given a dictionary of graph settings, containing: degree (int or float), trial_maker_id (string), whether to show infos (bool), whether to show outgoing nodes (bool) and/or incoming nodes (bool), which solver to use, a seed, and the id of the clicked node,  return a DiGraph containing the nodes (with metadata from infos) and edges in that degree and associated with that trial_maker_id. Some nodes or infos will have the "hidden" attribute set to True depending on the settings, but all of them will be in the DiGraph.
 
     show_outgoing: shows only nodes with outgoing edges from the clicked node
@@ -583,7 +583,6 @@ def generate_graph(graph_settings):
             raise Exception("Invalid graph settings")
 
     # validation: ensure trial_maker_id is valid
-    node_data_by_trial_maker = process_node_data()
     info_data_by_trial_maker = process_info_data()
     if graph_settings[EXP] not in node_data_by_trial_maker.keys():
         raise Exception("Invalid trial_maker_id.")
@@ -669,7 +668,8 @@ def get_graph(from_index=False):
 
     # get the settings
     settings = get_settings(request, from_index=from_index)
-    min_degree = process_node_data()[settings[EXP]]["degree"].min()
+    node_data_by_trial_maker = process_node_data()
+    min_degree = node_data_by_trial_maker[settings[EXP]]["degree"].min()
 
     # create network layout, based on layout generated on minimal degree
     global vertex_pos
@@ -682,10 +682,10 @@ def get_graph(from_index=False):
         pos_settings[DEGREE] = min_degree
 
         try:
-            pos_graph = generate_graph(pos_settings)
+            pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
         except ClickedNodeException:
             pos_settings[CLICKED_NODE] = ''
-            pos_graph = generate_graph(pos_settings)
+            pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
 
         if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
             pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
@@ -702,10 +702,10 @@ def get_graph(from_index=False):
     # create network
     pyvis_net = Network(directed=True)
     try:
-        nx_graph = generate_graph(settings)
+        nx_graph = generate_graph(settings, node_data_by_trial_maker)
     except ClickedNodeException:
         settings[CLICKED_NODE] = ''
-        nx_graph = generate_graph(settings)
+        nx_graph = generate_graph(settings, node_data_by_trial_maker)
 
     # use the correct solver (barnes hut is the default)
     if settings[SOLVER] == FORCE_ATLAS_2BASED:
