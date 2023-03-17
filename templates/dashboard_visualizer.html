@@ -24,7 +24,7 @@
       <div class="sub-pane">
         <h3>Trial Maker ID</h3>
         <form action="index" method="get">
-          <select name="trial-maker-id" id="trial-maker-id" onchange=this.form.submit()>
+          <select name="trial-maker-id" id="trial-maker-id">
             {% for trialmaker_option in trialmaker_options %}
               <option value={{trialmaker_option}}>{{trialmaker_option}}</option>
             {% endfor %}
@@ -264,6 +264,8 @@
       let layout = encodeURIComponent($('#layout').val());
       let seed = encodeURIComponent($('#seed').val());
 
+      let trialMakerId = encodeURIComponent($('#trial-maker-id').val());
+
       let showOption = encodeURIComponent(radioEvent);
       if (typeof radioEvent != 'string'){ // use radio button if valid
         showOption = encodeURIComponent(radioEvent.target.value);
@@ -339,7 +341,8 @@
       let url = '/getgraph?clicked-node=' + clickedNode
                   + '&degree=' + degree +  '&layout=' + layout
                   + '&seed=' + seed + '&show-infos=' + showInfos
-                  + '&show-option=' + showOption + '&solver=' + solver;
+                  + '&show-option=' + showOption + '&solver=' + solver
+                  + '&trial-maker-id=' + trialMakerId;
 
       if (graphRequest != null) {
         graphRequest.abort();
