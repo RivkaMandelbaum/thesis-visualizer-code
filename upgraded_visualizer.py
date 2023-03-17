@@ -186,7 +186,6 @@ def process_info_data(path):
         except KeyError:
             print("Data does not contain property1-property5")
 
-        # add filtered Dataframes to the global dicts
         info_data_by_trial_maker[trial_maker_id] = info_data
     return info_data_by_trial_maker
 
@@ -667,6 +666,9 @@ def get_content():
 def get_graph(from_index=False):
 
     # get the settings
+    global PATH
+    if PATH is None:
+        PATH = app.config.get('data_path')
     settings = get_settings(request, from_index=from_index)
     node_data_by_trial_maker = process_node_data(PATH)
     min_degree = node_data_by_trial_maker[settings[EXP]]["degree"].min()
