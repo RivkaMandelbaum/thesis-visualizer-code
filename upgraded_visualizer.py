@@ -10,6 +10,8 @@ import networkx as nx
 from pyvis.network import Network
 from flask import Flask, render_template, make_response, request
 from numpy import int64
+
+import time
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
@@ -745,6 +747,14 @@ def get_graph(from_index=False):
                 getGraph(from_click=true);\
             }\
         })'
+
+    graph_html = graph_html.replace('network.on("stabilizationProgress", function(params) {', 'network.on("stabilizationProgress", function(params) { if (document.getElementById("loadingBar") != null) {')
+
+    graph_html = graph_html.replace("document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';", "document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%'; }")
+
+    graph_html = graph_html.replace('network.once("stabilizationIterationsDone", function() {', 'network.once("stabilizationIterationsDone", function() { if (document.getElementById("loadingBar") != null) {')
+
+    graph_html = graph_html.replace("setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);",  "setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500); }")
 
     graph_html = graph_html.replace(script_to_replace, click_script)
 
