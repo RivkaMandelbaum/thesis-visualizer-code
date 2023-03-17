@@ -4,11 +4,12 @@
 #-----------------------------------------------------------------------
 #--------------------------   Imports  ---------------------------------
 
+from numpy import degrees
 import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 from flask import Flask, render_template, make_response, request
-from numpy import True_, random
+from numpy import int64
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
@@ -179,7 +180,7 @@ def process_info_data(path):
 
         # filter infos like nodes
         info_data = infos
-        info_data = info_data[infos["type"] == "graph_chain_trial"]
+        # info_data = info_data[infos["type"] == "graph_chain_trial"]
         info_data = info_data[info_data["network_id"].isin(experiment_network_ids)]
         try:
             info_data = info_data.drop(COLS_TO_DROP, axis="columns")
@@ -214,7 +215,7 @@ def process_node_data(path):
 
         # filter and sort nodes
         node_data = nodes
-        node_data = node_data[nodes["type"] == "graph_chain_node"] #TODO generalizable?
+        # node_data = node_data[nodes["type"] == "graph_chain_node"] #TODO generalizable?
         node_data = node_data[node_data["network_id"].isin(experiment_network_ids)]
         node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids", "failed"]]
         node_data = node_data.sort_values(["network_id", "degree"])
@@ -460,7 +461,7 @@ def add_node_to_networkx(G, degree, node_data, info_data, node_id, clicked_node,
         label=create_label(vert_id),
         labelHighlightBold=True,
         shape=DEFAULT_NODE_SHAPE,
-        vertex_id=vert_id,
+        vertex_id=str(vert_id),
         hidden=node_is_hidden,
         physics=False
         )
@@ -543,7 +544,7 @@ def add_infos_to_networkx(G, degree, node_data, info_data, node_id, clicked_node
             labelHighlightBold=True,
             origin_id=node_id,
             shape=DEFAULT_INFO_SHAPE,
-            vertex_id=vert_id,
+            vertex_id=str(vert_id),
             hidden=info_is_hidden
         )
         G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
@@ -689,17 +690,17 @@ def get_graph(from_index=False):
             pos_settings[CLICKED_NODE] = ''
             pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
 
-        if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
-            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
-        else:
-            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
+    if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
+        pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
+    else:
+        pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
 
-        # convert to vertex-id-mapped position dict, with only node positions added
-        vertex_id_map = pos_graph.nodes(data='vertex_id')
-        for graph_id, xy in pos.items():
-            v_id = int(vertex_id_map[graph_id])
-            if graph_id[0] == 'n':
-                vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+    # convert to vertex-id-mapped position dict, with only node positions added
+    vertex_id_map = pos_graph.nodes(data='vertex_id')
+    for graph_id, xy in pos.items():
+        v_id = str(int(vertex_id_map[graph_id]))
+        if graph_id[0] == 'n':
+            vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
     # create network
     pyvis_net = Network(directed=True)
@@ -721,7 +722,7 @@ def get_graph(from_index=False):
     pyvis_net.from_nx(nx_graph)
     for (graph_id, node) in pyvis_net.node_map.items():
         # position
-        v_id = node['vertex_id']
+        v_id = str(node['vertex_id'])
         node['x'] = vertex_pos[v_id]['x'] * LAYOUT_OPTIONS[settings[LAYOUT]]['scale'] # scaling necessary for x,y position to work
         node['y'] = vertex_pos[v_id]['y'] * LAYOUT_OPTIONS[settings[LAYOUT]]['scale']
 
