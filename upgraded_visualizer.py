@@ -690,17 +690,17 @@ def get_graph(from_index=False):
             pos_settings[CLICKED_NODE] = ''
             pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
 
-    if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
-        pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
-    else:
-        pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
+        if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
+            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
+        else:
+            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
 
-    # convert to vertex-id-mapped position dict, with only node positions added
-    vertex_id_map = pos_graph.nodes(data='vertex_id')
-    for graph_id, xy in pos.items():
-        v_id = str(int(vertex_id_map[graph_id]))
-        if graph_id[0] == 'n':
-            vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+        # convert to vertex-id-mapped position dict, with only node positions added
+        vertex_id_map = pos_graph.nodes(data='vertex_id')
+        for graph_id, xy in pos.items():
+            v_id = str(int(vertex_id_map[graph_id]))
+            if graph_id[0] == 'n':
+                vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
     # create network
     pyvis_net = Network(directed=True)
