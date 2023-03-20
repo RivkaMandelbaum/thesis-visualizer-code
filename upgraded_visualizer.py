@@ -168,7 +168,6 @@ def process_info_data(path):
 
    # filter networks: role = experiment
     network_data = networks
-    network_data = network_data[network_data["role"] == "experiment"]
 
     # fill in node data and info data, for each trial_maker_id
     trial_maker_ids = network_data["trial_maker_id"].unique()
@@ -176,6 +175,10 @@ def process_info_data(path):
     for trial_maker_id in trial_maker_ids:
         # find relevant network ids for this trial_maker_id
         network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
+
+        if network_data["vertex_id"].size == 0:
+            # skip non-graph-type networks e.g. color blindness test
+            continue
         experiment_network_ids = list(network_data['id'].to_numpy())
 
         # filter infos like nodes
@@ -203,7 +206,6 @@ def process_node_data(path):
 
    # filter networks: role = experiment
     network_data = networks
-    network_data = network_data[network_data["role"] == "experiment"]
 
     # fill in node data for each trial_maker_id
     trial_maker_ids = network_data["trial_maker_id"].unique()
@@ -211,6 +213,11 @@ def process_node_data(path):
     for trial_maker_id in trial_maker_ids:
         # find relevant network ids for this trial_maker_id
         network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
+
+        if network_data["vertex_id"].size == 0:
+            # skip non-graph-type networks e.g. color blindness test
+            continue
+
         experiment_network_ids = list(network_data['id'].to_numpy())
 
         # filter and sort nodes
