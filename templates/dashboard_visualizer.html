@@ -36,9 +36,8 @@
 
         <input type="checkbox" id="show-infos" name="show-infos" {{show_infos_checked}}>
       </div>
-      <div class="sub-pane">
-        <h3>Graph Seed</h3>
-        <input type="number" id="seed" name="seed" min=0>
+      <div id="search-pane" class="sub-pane">
+        <input type="number" id="find-by" placeholder="Find Node By Vertex ID" min={{find_min}} max={{find_max}}>
       </div>
       <div class="sub-pane">
         <h3>Physics Solver</h3>
@@ -75,6 +74,10 @@
         </select>
       </div>
       <div class="sub-pane">
+        <h3>Graph Seed</h3>
+        <input type="number" id="seed" name="seed" min=0>
+      </div>
+      <div class="sub-pane">
         <h3>Show:</h3>
         <div id="show-radio-container">
           <input type="radio" name="show-radio" id="show-radio-incoming" value="incoming"{% if "incoming" == show_nodes_option %}checked{% endif %}> <label for="show-radio-incoming">Incoming nodes only</label><br>
@@ -86,9 +89,6 @@
           <input type="radio" name="show-radio" id="show-radio-all" value="all"{% if "all" == show_nodes_option %}checked{% endif %}> <label for="show-radio-all">All nodes</label><br>
         </div>
         </div>
-    </div>
-    <div id="search-pane" class="sidebar-pane">
-      <input type="number" id="find-by" placeholder="Find Node By Vertex ID" min={{find_min}} max={{find_max}}>
     </div>
   </aside>
   <main class="flex-fill">
