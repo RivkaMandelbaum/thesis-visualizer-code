@@ -414,7 +414,7 @@ def add_node_to_networkx(G, degree, node_data, info_data, node_id, clicked_node,
     clicked_id, clicked_is_info = from_graph_id(clicked_node)
 
     # extract vertex id
-    vert_id = node_data[node_data["id"] == node_id]["vertex_id"].values[0]
+    vert_id = int(node_data[node_data["id"] == node_id]["vertex_id"].values[0])
 
     # set node color and hidden status for clicked/neighbor nodes
     node_color = DEFAULT_COLOR
@@ -546,7 +546,7 @@ def add_infos_to_networkx(G, degree, node_data, info_data, node_id, clicked_node
             labelHighlightBold=True,
             origin_id=node_id,
             shape=DEFAULT_INFO_SHAPE,
-            vertex_id=str(vert_id),
+            vertex_id=str(int(vert_id)),
             hidden=info_is_hidden
         )
         G.add_edge(to_graph_id(node_id, False), to_graph_id(info_id, is_info))
