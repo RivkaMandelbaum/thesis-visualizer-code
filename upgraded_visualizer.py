@@ -4,12 +4,10 @@
 #-----------------------------------------------------------------------
 #--------------------------   Imports  ---------------------------------
 
-from numpy import degrees
 import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 from flask import Flask, render_template, make_response, request
-from numpy import True_, random
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
@@ -174,16 +172,15 @@ def process_info_data(path):
     info_data_by_trial_maker = {}
     for trial_maker_id in trial_maker_ids:
         # find relevant network ids for this trial_maker_id
-        network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
+        current_network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
 
-        if network_data["vertex_id"].size == 0:
+        if current_network_data["vertex_id"].size == 0:
             # skip non-graph-type networks e.g. color blindness test
             continue
-        experiment_network_ids = list(network_data['id'].to_numpy())
+        experiment_network_ids = list(current_network_data['id'].to_numpy())
 
         # filter infos like nodes
         info_data = infos
-        # info_data = info_data[infos["type"] == "graph_chain_trial"]
         info_data = info_data[info_data["network_id"].isin(experiment_network_ids)]
         try:
             info_data = info_data.drop(COLS_TO_DROP, axis="columns")
@@ -212,20 +209,17 @@ def process_node_data(path):
     node_data_by_trial_maker = {}
     for trial_maker_id in trial_maker_ids:
         # find relevant network ids for this trial_maker_id
-        network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
+        current_network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
 
-        if network_data["vertex_id"].size == 0:
+        if current_network_data["vertex_id"].size == 0:
             # skip non-graph-type networks e.g. color blindness test
             continue
 
-        experiment_network_ids = list(network_data['id'].to_numpy())
-
+        experiment_network_ids = list(current_network_data['id'].to_numpy())
         # filter and sort nodes
         node_data = nodes
-        # node_data = node_data[nodes["type"] == "graph_chain_node"] #TODO generalizable?
         node_data = node_data[node_data["network_id"].isin(experiment_network_ids)]
         node_data = node_data[["id", "network_id", "degree", "definition", "seed", "vertex_id", "dependent_vertex_ids", "failed"]]
-        node_data = node_data.sort_values(["network_id", "degree"])
 
         node_data_by_trial_maker[trial_maker_id] = node_data
 
