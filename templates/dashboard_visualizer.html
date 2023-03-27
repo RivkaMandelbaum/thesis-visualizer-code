@@ -26,7 +26,7 @@
         <form action="index" method="get">
           <select name="trial-maker-id" id="trial-maker-id">
             {% for trialmaker_option in trialmaker_options %}
-              <option value={{trialmaker_option}}>{{trialmaker_option}}</option>
+              <option value={{trialmaker_option}} {% if selected_exp == trialmaker_option %} selected {% endif %}>{{trialmaker_option}}</option>
             {% endfor %}
           </select>
       </form>

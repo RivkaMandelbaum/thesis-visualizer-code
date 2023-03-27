@@ -8,6 +8,7 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 from flask import Flask, render_template, make_response, request
+from numpy import isnan
 #-----------------------------------------------------------------------
 #-------------------------- Constants ----------------------------------
 DEFAULT_COLOR = '#97c2fc' # from PyVis
@@ -174,7 +175,7 @@ def process_info_data(path):
         # find relevant network ids for this trial_maker_id
         current_network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
 
-        if current_network_data["vertex_id"].size == 0:
+        if current_network_data["vertex_id"].size == 0 or isnan(current_network_data["vertex_id"].values[0]):
             # skip non-graph-type networks e.g. color blindness test
             continue
         experiment_network_ids = list(current_network_data['id'].to_numpy())
@@ -211,7 +212,7 @@ def process_node_data(path):
         # find relevant network ids for this trial_maker_id
         current_network_data = network_data[network_data["trial_maker_id"] == trial_maker_id]
 
-        if current_network_data["vertex_id"].size == 0:
+        if current_network_data["vertex_id"].size == 0 or isnan(current_network_data["vertex_id"].values[0]):
             # skip non-graph-type networks e.g. color blindness test
             continue
 
@@ -291,6 +292,8 @@ def get_settings(request, from_index=False):
 
     # find the correct 'exp' (trial maker id)
     exp = request.args.get('trial-maker-id')
+    if exp is None:
+        exp = request.cookies.get(EXP)
     if exp is None or exp not in node_data_by_trial_maker.keys():
         exp = list(node_data_by_trial_maker.keys())[0]
     settings[EXP] = exp
@@ -372,7 +375,7 @@ def set_graph_cookies(response, settings):
     '''
     response.set_cookie(CLICKED_NODE, settings[CLICKED_NODE])
     response.set_cookie(DEGREE, str(settings[DEGREE]))
-    response.set_cookie('exp', settings[EXP])
+    response.set_cookie(EXP, settings[EXP])
     response.set_cookie(LAYOUT, settings[LAYOUT])
     response.set_cookie(SHOW_INFOS, "true" if settings[SHOW_INFOS] else "false")
 
@@ -677,7 +680,7 @@ def get_graph(from_index=False):
 
     # create network layout, based on layout generated on minimal degree
     global vertex_pos
-    if (vertex_pos is None) or (settings[LAYOUT] != request.cookies.get(LAYOUT)) or (settings[SEED] is not None):
+    if (vertex_pos is None) or (settings[LAYOUT] != request.cookies.get(LAYOUT)) or (settings[SEED] is not None) or (settings[EXP] != request.cookies.get(EXP)):
         # print("(Re)setting global position")
         vertex_pos = {}
 
@@ -822,6 +825,7 @@ def create_visualizer():
         selected_layout = settings[LAYOUT],
         solver_options = VALID_SOLVERS,
         selected_solver = settings[SOLVER],
+        selected_exp= settings[EXP]
         )
     response = make_response(page_html)
 
