@@ -61,12 +61,21 @@
                       {% if selected_layout == layout_key %}
                         selected
                       {% endif %}
-
+                      data-seed=
+                      {% if layout_options[layout_key]['has_seed'] == True %}
+                        "use-seed"
+                      {% else %}
+                        "none"
+                      {% endif %}
                       >
                         {{layout_options[layout_key]['name']}}
               </option>
           {% endfor %}
         </select>
+      </div>
+      <div class="sub-pane">
+        <h3>Graph Seed</h3>
+        <input type="number" id="seed" name="seed" min=0>
       </div>
       <div class="sub-pane">
         <h3>Show:</h3>
@@ -116,6 +125,8 @@
       if (!validClickedNode) {
         clickedNodeUpdateRequest();
       }
+      $('#seed').attr("placeholder", $('#seed').val());
+      $('#seed').val('');
     }
 
     function handleContentResponse(response) {
@@ -170,6 +181,14 @@
     function validateEnabledSettings() {
       // find node by input box size
       $('#find-by').css('width', ($('#find-by').attr('placeholder').length + 2) * 8);
+
+      // seed
+      if ($('#layout').find(":selected").attr('data-seed') == "use-seed") {
+        $('#seed').removeAttr("disabled");
+      }
+      else {
+        $('#seed').attr("disabled", true);
+      }
 
       // radio buttons
       let clickedNode = document.getElementById("clicked-node-input").value;
@@ -247,6 +266,7 @@
       let degree = encodeURIComponent($('#degree').val());
       let solver = encodeURIComponent($('#solver').val());
       let layout = encodeURIComponent($('#layout').val());
+      let seed = encodeURIComponent($('#seed').val());
 
       let trialMakerId = encodeURIComponent($('#trial-maker-id').val());
 
@@ -324,7 +344,7 @@
       // make url and send request
       let url = '/getgraph?clicked-node=' + clickedNode
                   + '&degree=' + degree +  '&layout=' + layout
-                  + '&show-infos=' + showInfos
+                  + '&seed=' + seed + '&show-infos=' + showInfos
                   + '&show-option=' + showOption + '&solver=' + solver
                   + '&trial-maker-id=' + trialMakerId;
 
@@ -392,6 +412,7 @@
       $('#show-infos').on('change', getGraph);
       $('#show-radio-container').on('change', event => { validateEnabledSettingsGetGraph(event) });
       $('#solver').on('change', getGraph);
+      $('#seed').on('input', getGraph);
       $('#layout').on('change', getGraph);
       $('#find-by').on('change', findNodeGetGraph);
     }
