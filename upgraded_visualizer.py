@@ -52,6 +52,7 @@ LAYOUT_OPTIONS = {
     'spring': {'name': 'Spring Layout', 'has_seed': True, 'func': nx.spring_layout, 'scale': 1500}
 }
 DEFAULT_LAYOUT = 'spring' # networkx default
+DEFAULT_SEED = 1 # for random and spring layouts to remain consistent
 
 # settings dict
 CLICKED_NODE = 'clicked-node'
@@ -67,8 +68,6 @@ GRAPH_SETTINGS = [CLICKED_NODE, EXP, DEGREE, SHOW_INFOS, SHOW_OUTGOING, SHOW_INC
 
 #-----------------------------------------------------------------------
 #-------------------------  Global variables  --------------------------
-vertex_pos = None #TODO fix
-
 class ClickedNodeException(Exception):
     "Clicked node or info not present in data"
     pass
@@ -359,8 +358,8 @@ def get_settings(request, from_index=False):
     # get the seed (or None if it was not the setting that was changed)
     seed = request.args.get(SEED)
     if seed in ['', 'undefined']:
-        seed = None
-    settings[SEED] = int(seed) if seed is not None else None
+        seed = DEFAULT_SEED
+    settings[SEED] = int(seed) if seed is not None else DEFAULT_SEED
 
     return settings
 
@@ -679,32 +678,29 @@ def get_graph(from_index=False):
     min_degree = node_data_by_trial_maker[settings[EXP]]["degree"].min()
 
     # create network layout, based on layout generated on minimal degree
-    global vertex_pos
-    if (vertex_pos is None) or (settings[LAYOUT] != request.cookies.get(LAYOUT)) or (settings[SEED] is not None) or (settings[EXP] != request.cookies.get(EXP)):
-        # print("(Re)setting global position")
-        vertex_pos = {}
+    vertex_pos = {}
 
-        # get graph settings for minimal degree
-        pos_settings = get_settings(request, from_index=from_index)
-        pos_settings[DEGREE] = min_degree
+    # get graph settings for minimal degree
+    pos_settings = get_settings(request, from_index=from_index)
+    pos_settings[DEGREE] = min_degree
 
-        try:
-            pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
-        except ClickedNodeException:
-            pos_settings[CLICKED_NODE] = ''
-            pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
+    try:
+        pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
+    except ClickedNodeException:
+        pos_settings[CLICKED_NODE] = ''
+        pos_graph = generate_graph(pos_settings, node_data_by_trial_maker)
 
-        if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
-            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
-        else:
-            pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
+    if LAYOUT_OPTIONS[pos_settings[LAYOUT]]['has_seed']:
+        pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph, seed=pos_settings[SEED])
+    else:
+        pos = LAYOUT_OPTIONS[pos_settings[LAYOUT]]['func'](pos_graph)
 
-        # convert to vertex-id-mapped position dict, with only node positions added
-        vertex_id_map = pos_graph.nodes(data='vertex_id')
-        for graph_id, xy in pos.items():
-            v_id = str(int(vertex_id_map[graph_id]))
-            if graph_id[0] == 'n':
-                vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
+    # convert to vertex-id-mapped position dict, with only node positions added
+    vertex_id_map = pos_graph.nodes(data='vertex_id')
+    for graph_id, xy in pos.items():
+        v_id = str(int(vertex_id_map[graph_id]))
+        if graph_id[0] == 'n':
+            vertex_pos[v_id] = {'x': xy[0] , 'y': xy[1]}
 
     # create network
     pyvis_net = Network(directed=True)
@@ -825,7 +821,8 @@ def create_visualizer():
         selected_layout = settings[LAYOUT],
         solver_options = VALID_SOLVERS,
         selected_solver = settings[SOLVER],
-        selected_exp= settings[EXP]
+        selected_exp= settings[EXP],
+        seed_placeholder=settings[SEED]
         )
     response = make_response(page_html)
 
