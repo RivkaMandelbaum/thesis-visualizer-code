@@ -107,6 +107,9 @@
 
     function handleGraphResponse(response) {
       $('#mynetwork').html(response);
+      if (nodes.length === 0) {
+        $('#mynetwork').html("<div> An error occurred. Check that all settings are valid and try again. </div>")
+      }
 
       // validations
       let validClickedNode = validateEnabledSettings();
