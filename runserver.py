@@ -11,7 +11,7 @@ from upgraded_visualizer import app
 import os
 
 path.append(os.path.dirname('/Desktop/psynet-work/PsyNet/visualizer'))
-TEST_DATA_PATH = "../serial-reproduction-with-selection/analysis/data/rivka-necklace-rep-data/psynet/data/"
+TEST_DATA_PATH = "./demo-data/"
 
 def main():
 
