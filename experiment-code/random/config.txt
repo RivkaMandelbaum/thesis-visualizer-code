@@ -1,0 +1,42 @@
+[Launch mode]
+mode = sandbox
+
+[Payment information]
+title = Necklace coloring game (approximately $2.5 bonus!)
+base_payment = 0.10
+
+[Recruitment strategy]
+auto_recruit = true
+lifetime = 24
+duration = 2
+us_only = true
+approve_requirement = 95
+ad_group = Game
+browser_exclude_rule = MSIE, mobile, tablet
+disable_when_duration_exceeded = False
+qualification_blacklist = coco-blist
+recruiter=hotair
+
+[Advert metadata]
+description = Select colorful necklaces and try to reproduce them from memory! You will receive a bonus of approx. $2.5 upon completion of the full 13 minute task.
+keywords = game
+contact_email_on_error = cocosci.turk+rivka@gmail.com
+organization_name = Princeton Psychology Department
+
+[Database]
+database_url = postgresql://postgres@localhost/dallinger
+database_size = standard-2
+
+[Server]
+# Dyno types: hobby, standard-1x, standard-2x, performance-m, performance-l, probably performance-m is best
+dyno_type = performance-m
+num_dynos_web = 3
+num_dynos_worker = 2
+redis_size = premium-3
+host = 0.0.0.0
+clock_on = true
+heroku_python_version = 3.10.6
+
+[Dashboard]
+dashboard_password = capcapcap2021!
+dashboard_user = cap

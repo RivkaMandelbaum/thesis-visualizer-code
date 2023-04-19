@@ -1,0 +1,2 @@
+networkx==2.6.3
+psynet@git+https://gitlab.com/PsyNetDev/PsyNet.git@v9.4.1#egg=psynet
